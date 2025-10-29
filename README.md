@@ -43,19 +43,12 @@ A modern, interactive portfolio website built with React, TypeScript, and Tailwi
    npm install
    ```
 
-3. **Configure environment variables** (if using Supabase)
-   Create a `.env` file in the root directory with your Supabase credentials:
-   ```
-   VITE_SUPABASE_URL=your_supabase_url
-   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
-
-4. **Start the development server**
+3. **Start the development server**
    ```bash
    npm run dev
    ```
 
-5. **Open your browser**
+4. **Open your browser**
    Navigate to `http://localhost:5173` (or the port shown in your terminal)
 
 ## 📜 Available Scripts
