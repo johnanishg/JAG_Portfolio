@@ -5,26 +5,259 @@
 @layer base {
   html {
     overflow: hidden;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
   }
 
   body {
     @apply antialiased;
     overflow: hidden;
+    scroll-behavior: smooth;
+  }
+  
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Hide scrollbars while keeping scroll functionality */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* Internet Explorer 10+ */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Safari and Chrome */
+  }
+}
+
+/* Smooth scroll performance optimizations */
+@layer utilities {
+  .smooth-section {
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+  }
+  
+  .flip-section {
+    perspective: 1000px;
+    transform-style: preserve-3d;
+    -webkit-perspective: 1000px;
+    -webkit-transform-style: preserve-3d;
+  }
+  
+  .cube-section {
+    perspective: 1500px;
+    transform-style: preserve-3d;
+    -webkit-perspective: 1500px;
+    -webkit-transform-style: preserve-3d;
+  }
+  
+  /* Pop animation for experience cards */
+  .pop-in {
+    animation: popIn 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  
+  @keyframes popIn {
+    0% {
+      opacity: 0;
+      transform: translateY(30px) scale(0.9);
+    }
+    50% {
+      opacity: 0.9;
+      transform: translateY(-8px) scale(1.03);
+      box-shadow: 0 20px 40px rgba(34, 211, 238, 0.3);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      box-shadow: 0 10px 25px rgba(34, 211, 238, 0.15);
+    }
+  }
+
+  /* Comb transition - boxes slide in from left and right */
+  .comb-slide-left {
+    opacity: 0;
+    animation: slideInFromLeft 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .comb-slide-right {
+    opacity: 0;
+    animation: slideInFromRight 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes slideInFromLeft {
+    0% {
+      opacity: 0;
+      transform: translateX(-100px) scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  @keyframes slideInFromRight {
+    0% {
+      opacity: 0;
+      transform: translateX(100px) scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+
+  /* Section title animation - appears in center then moves up */
+  .section-title-animate {
+    position: relative;
+    opacity: 0;
+    animation: titleCenterToTop 1.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  @keyframes titleCenterToTop {
+    0% {
+      opacity: 0;
+      transform: translateY(200px) scale(0.8);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(200px) scale(1);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  /* Fade animation for profile image */
+  .fade-in {
+    animation: fadeIn 1s ease-out forwards;
+    opacity: 0;
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Entrance animations for home section */
+  .slide-up-fade {
+    opacity: 0;
+    transform: translateY(40px);
+    animation: slideUpFade 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+  
+  /* Override for gradient text - same animation as subtitle */
+  .animate-gradient.slide-up-fade {
+    animation: slideUpFade 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards, gradient 6s linear infinite 0.8s;
+  }
+  
+  
+  /* Ensure gradient text remains visible - use transform only */
+  .slide-up-fade-text {
+    opacity: 1 !important;
+    transform: translateY(40px);
+    animation: slideUpFadeText 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    will-change: transform;
+  }
+  
+  @keyframes slideUpFadeText {
+    0% {
+      opacity: 1;
+      transform: translateY(40px) scale(0.95);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  @keyframes slideUpFade {
+    from {
+      opacity: 0;
+      transform: translateY(40px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .slide-in-left {
+    animation: slideInLeft 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    transform: translateX(-20px) scale(0.9);
+  }
+  
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px) scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0) scale(1);
+    }
+  }
+  
+  .scale-in {
+    animation: scaleIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  
+  /* Pulsating animation for image glow */
+  .pulsate-glow {
+    animation: pulsate 2s ease-in-out infinite;
+  }
+  
+  @keyframes pulsate {
+    0%, 100% {
+      opacity: 0.75;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
   }
 }
 
 @layer utilities {
   @keyframes gradient {
-    0%, 100% {
-      background-position: 0% 50%;
-    }
-    50% {
+    0% {
       background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
     }
   }
 
   .animate-gradient {
-    background-size: 200% 200%;
-    animation: gradient 3s ease infinite;
+    animation: gradient 6s linear infinite;
   }
 }

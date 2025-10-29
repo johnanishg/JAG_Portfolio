@@ -3,28 +3,93 @@ import { Github, Linkedin, Mail, Phone, ChevronDown, Award, Briefcase, Graduatio
 
 function App() {
   const [activeSection, setActiveSection] = useState(0);
+  const [scrollProgress, setScrollProgress] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
+  const scrollAccumulator = useRef(0);
+  const scrollThreshold = 60; // Reduced threshold for more responsive scrolling
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Trigger entrance animations on initial load
+  useEffect(() => {
+    // Small delay to ensure DOM is ready for animations
+    const timer = setTimeout(() => {
+      setHasLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   const sections = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
 
-  useEffect(() => {
-    let wheelTimeout: NodeJS.Timeout;
+  // Helper function to check if a section can scroll
+  const canScrollInSection = (sectionIndex: number, direction: 'up' | 'down'): boolean => {
+    const sectionElement = sectionRefs.current[sectionIndex];
+    if (!sectionElement) return false;
 
+    const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') || sectionElement;
+    
+    // Check if it's an HTMLElement
+    if (scrollableElement instanceof HTMLElement) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
+      
+      if (direction === 'down') {
+        // Can scroll down if not at bottom
+        return scrollTop + clientHeight < scrollHeight - 1;
+      } else {
+        // Can scroll up if not at top
+        return scrollTop > 1;
+      }
+    }
+    
+    return false;
+  };
+
+  useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-
+      
       if (isScrolling) return;
 
-      clearTimeout(wheelTimeout);
-      wheelTimeout = setTimeout(() => {
+      const direction = e.deltaY > 0 ? 'down' : 'up';
+      const canScroll = canScrollInSection(activeSection, direction);
+
+      // If section has scrollable content, handle smooth scrolling
+      if (canScroll) {
+        const sectionElement = sectionRefs.current[activeSection];
+        if (sectionElement) {
+          const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') || sectionElement;
+          if (scrollableElement instanceof HTMLElement) {
+            // Smooth scroll with reduced sensitivity
+            const smoothDelta = e.deltaY * 0.85;
+            scrollableElement.scrollTop += smoothDelta;
+          }
+        }
+        // Reset accumulator since we're scrolling within the section
+        scrollAccumulator.current = 0;
+        setScrollProgress(0);
+        return;
+      }
+
+      // Accumulate scroll delta only when section can't scroll
+      scrollAccumulator.current += e.deltaY;
+      
+      // Calculate progress with smooth easing (ease-out cubic)
+      const progress = Math.min(Math.abs(scrollAccumulator.current) / scrollThreshold, 1);
+      const easedProgress = 1 - Math.pow(1 - progress, 3); // Smooth easing
+      setScrollProgress(easedProgress);
+
+      // Check if we should transition to next/previous section
+      if (Math.abs(scrollAccumulator.current) >= scrollThreshold) {
         if (e.deltaY > 0 && activeSection < sections.length - 1) {
           scrollToSection(activeSection + 1);
         } else if (e.deltaY < 0 && activeSection > 0) {
           scrollToSection(activeSection - 1);
         }
-      }, 50);
+        scrollAccumulator.current = 0;
+        setScrollProgress(0);
+      }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,27 +133,126 @@ function App() {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
-      clearTimeout(wheelTimeout);
     };
-  }, [activeSection, isScrolling]);
+  }, [activeSection, isScrolling, canScrollInSection]);
 
   const scrollToSection = (index: number) => {
     setIsScrolling(true);
     setActiveSection(index);
 
+    // Scroll the new section to top
+    setTimeout(() => {
+      const sectionElement = sectionRefs.current[index];
+      if (sectionElement) {
+        const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+        if (scrollableElement) {
+          scrollableElement.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      }
+    }, 50);
+
+    // Standard timeout for all sections
+    const transitionDuration = 700;
     setTimeout(() => {
       setIsScrolling(false);
-    }, 1000);
+    }, transitionDuration);
   };
 
-  const getAnimationClass = (index: number) => {
-    if (index === activeSection) {
-      return 'translate-x-0 opacity-100 scale-100 rotate-0';
-    } else if (index < activeSection) {
-      return '-translate-x-full opacity-0 scale-95 -rotate-2';
-    } else {
-      return 'translate-x-full opacity-0 scale-95 rotate-2';
+  const getAnimationStyle = (index: number) => {
+    const isActive = index === activeSection;
+    const isPrevious = index < activeSection;
+    const isNext = index > activeSection;
+    
+    // Calculate transition progress based on scroll
+    const progress = scrollProgress;
+    const reverseProgress = 1 - progress;
+
+    // Special flip transition for About section (index 1)
+    if (index === 1) {
+      if (isActive) {
+        if (isNext) {
+          // Flipping out - rotating on Y-axis
+          const rotateY = progress * 180;
+          return {
+            transform: `rotateY(${rotateY}deg) translateZ(0)`,
+            opacity: 1 - progress,
+          };
+        }
+        if (isPrevious) {
+          // Flipping in from behind - rotating on Y-axis
+          const rotateY = reverseProgress * 180;
+          return {
+            transform: `rotateY(${rotateY - 180}deg) translateZ(0)`,
+            opacity: reverseProgress,
+          };
+        }
+        return {
+          transform: 'rotateY(0deg) translateZ(0)',
+          opacity: 1,
+        };
+      }
+      
+      if (isPrevious) return { transform: 'rotateY(-180deg) translateZ(0)', opacity: 0 };
+      if (isNext) return { transform: 'rotateY(180deg) translateZ(0)', opacity: 0 };
+      return { transform: 'rotateY(0deg) translateZ(0)', opacity: 1 };
     }
+
+
+    // Special zoom transition for Projects section (index 3)
+    if (index === 3) {
+      if (isActive) {
+        if (isNext) {
+          // Zooming out while fading
+          const scale = 1 - progress * 0.5;
+          return {
+            transform: `scale(${scale}) translateZ(0)`,
+            opacity: 1 - progress,
+          };
+        }
+        if (isPrevious) {
+          // Zooming in from small scale
+          const scale = 0.3 + reverseProgress * 0.7;
+          return {
+            transform: `scale(${scale}) translateZ(0)`,
+            opacity: reverseProgress * 0.3 + 0.7,
+          };
+        }
+        return {
+          transform: 'scale(1) translateZ(0)',
+          opacity: 1,
+        };
+      }
+      
+      if (isPrevious) return { transform: 'scale(0.3) translateZ(0)', opacity: 0 };
+      if (isNext) return { transform: 'scale(0.5) translateZ(0)', opacity: 0 };
+      return { transform: 'scale(1) translateZ(0)', opacity: 1 };
+    }
+
+    // OnePlus-style smooth vertical transitions with subtle scale for other sections
+    if (isActive) {
+      if (isNext) {
+        // Moving out downward with subtle scale
+        return {
+          transform: `translateY(${progress * 100}%) scale(${1 - progress * 0.15})`,
+          opacity: 1 - progress * 0.8,
+        };
+      }
+      if (isPrevious) {
+        // Moving in from above
+        return {
+          transform: `translateY(${reverseProgress * -100}%) scale(${0.85 + reverseProgress * 0.15})`,
+          opacity: reverseProgress * 0.2 + 0.8,
+        };
+      }
+      return {
+        transform: 'translateY(0%) scale(1)',
+        opacity: 1,
+      };
+    }
+    
+    if (isPrevious) return { transform: 'translateY(-100%) scale(0.85)', opacity: 0 };
+    if (isNext) return { transform: 'translateY(100%) scale(0.85)', opacity: 0 };
+    return { transform: 'translateY(0%) scale(1)', opacity: 1 };
   };
 
   return (
@@ -118,45 +282,97 @@ function App() {
 
       <div className="relative h-full w-full">
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(0)}`}
-          style={{ zIndex: activeSection === 0 ? 10 : 0 - activeSection }}
+          ref={(el) => { sectionRefs.current[0] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{ 
+            zIndex: activeSection === 0 ? 10 : 0 - activeSection,
+            ...getAnimationStyle(0)
+          }}
         >
           <div className="h-full flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent"></div>
             <div className="text-center z-10 px-6">
-              <div className="mb-8 relative inline-block group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur transition duration-300"></div>
+              <div className={`mb-6 sm:mb-8 relative inline-block group ${hasLoaded ? 'scale-in' : ''}`}
+                   style={{ animationDelay: hasLoaded ? '0.2s' : '0s' }}>
+                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition duration-300 pulsate-glow"></div>
                 <img
                   src="/WhatsApp Image 2025-10-29 at 12.34.07.jpeg"
                   alt="John Anish G"
-                  className="relative w-48 h-48 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-transform duration-500 group-hover:scale-105"
+                  className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-transform duration-500 group-hover:scale-105 ${
+                    activeSection === 0 && !hasLoaded ? 'fade-in' : ''
+                  }`}
                 />
               </div>
-              <h1 className="text-6xl md:text-7xl font-bold mb-4 bg-gradient-to-r from-cyan-400 via-blue-500 to-cyan-400 bg-clip-text text-transparent animate-gradient">
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 bg-clip-text text-transparent animate-gradient ${hasLoaded ? 'slide-up-fade' : ''}`}
+                  style={{ 
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundImage: 'linear-gradient(90deg, rgb(34, 211, 238) 0%, rgb(59, 130, 246) 25%, rgb(34, 211, 238) 50%, rgb(59, 130, 246) 75%, rgb(34, 211, 238) 100%)',
+                    backgroundSize: '200% 100%',
+                    position: 'relative',
+                    zIndex: 10,
+                    lineHeight: '1.2',
+                    marginBottom: '1rem',
+                    animationDelay: hasLoaded ? '0.5s' : '0s',
+                    opacity: hasLoaded ? undefined : 1
+                  }}>
                 JOHN ANISH G
               </h1>
-              <p className="text-xl md:text-2xl text-gray-300 mb-8">AI & Machine Learning Engineer</p>
-              <div className="flex justify-center space-x-6 mb-12">
+              <p className={`text-lg sm:text-xl md:text-2xl text-gray-300 mb-6 sm:mb-8 ${hasLoaded ? 'slide-up-fade' : ''}`}
+                 style={{ 
+                   animationDelay: hasLoaded ? '0.8s' : '0s',
+                   opacity: hasLoaded ? undefined : 1,
+                   position: 'relative',
+                   zIndex: 10,
+                   marginTop: '0.5rem'
+                 }}>
+                AI & Machine Learning Engineer
+              </p>
+              <div className={`flex justify-center space-x-6 mb-12 ${hasLoaded ? 'slide-up-fade' : ''}`}
+                   style={{ 
+                     animationDelay: hasLoaded ? '1.1s' : '0s',
+                     opacity: hasLoaded ? undefined : 1 
+                   }}>
                 <a href="https://github.com/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="transform transition-all duration-300 hover:scale-110 hover:text-cyan-400">
+                   className={`transform transition-all duration-300 hover:scale-110 hover:text-cyan-400 ${hasLoaded ? 'slide-in-left' : ''}`}
+                   style={{ 
+                     animationDelay: hasLoaded ? '1.3s' : '0s',
+                     opacity: hasLoaded ? undefined : 1 
+                   }}>
                   <Github size={28} />
                 </a>
                 <a href="https://linkedin.com/in/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="transform transition-all duration-300 hover:scale-110 hover:text-cyan-400">
+                   className={`transform transition-all duration-300 hover:scale-110 hover:text-cyan-400 ${hasLoaded ? 'slide-in-left' : ''}`}
+                   style={{ 
+                     animationDelay: hasLoaded ? '1.45s' : '0s',
+                     opacity: hasLoaded ? undefined : 1 
+                   }}>
                   <Linkedin size={28} />
                 </a>
                 <a href="mailto:johnanishg@gmail.com"
-                   className="transform transition-all duration-300 hover:scale-110 hover:text-cyan-400">
+                   className={`transform transition-all duration-300 hover:scale-110 hover:text-cyan-400 ${hasLoaded ? 'slide-in-left' : ''}`}
+                   style={{ 
+                     animationDelay: hasLoaded ? '1.6s' : '0s',
+                     opacity: hasLoaded ? undefined : 1 
+                   }}>
                   <Mail size={28} />
                 </a>
                 <a href="tel:+916363717949"
-                   className="transform transition-all duration-300 hover:scale-110 hover:text-cyan-400">
+                   className={`transform transition-all duration-300 hover:scale-110 hover:text-cyan-400 ${hasLoaded ? 'slide-in-left' : ''}`}
+                   style={{ 
+                     animationDelay: hasLoaded ? '1.75s' : '0s',
+                     opacity: hasLoaded ? undefined : 1 
+                   }}>
                   <Phone size={28} />
                 </a>
               </div>
               <button
                 onClick={() => scrollToSection(1)}
-                className="animate-bounce text-cyan-400 hover:text-cyan-300 transition-colors">
+                className={`animate-bounce text-cyan-400 hover:text-cyan-300 transition-colors ${hasLoaded ? 'slide-up-fade' : ''}`}
+                style={{ 
+                  animationDelay: hasLoaded ? '2s' : '0s',
+                  opacity: hasLoaded ? undefined : 1 
+                }}>
                 <ChevronDown size={40} />
               </button>
             </div>
@@ -164,15 +380,28 @@ function App() {
         </section>
 
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(1)}`}
-          style={{ zIndex: activeSection === 1 ? 10 : 1 - activeSection }}
+          ref={(el) => { sectionRefs.current[1] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section flip-section"
+          style={{ 
+            zIndex: activeSection === 1 ? 10 : 1 - activeSection,
+            ...getAnimationStyle(1),
+            transformStyle: 'preserve-3d',
+            backfaceVisibility: 'hidden'
+          }}
         >
-          <div className="h-full flex items-center py-20 px-6 overflow-y-auto">
+          <div className="h-full flex items-center py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-5xl mx-auto w-full">
-              <h2 className="text-5xl font-bold mb-12 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+                activeSection === 1 ? 'section-title-animate' : ''
+              }`}>
                 About Me
               </h2>
-              <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-8 border border-slate-700 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500">
+              <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500 ${
+                activeSection === 1 ? 'pop-in' : ''
+              }`}
+              style={{
+                animationDelay: activeSection === 1 ? '2.0s' : '0s'
+              }}>
                 <p className="text-lg text-gray-300 leading-relaxed mb-6">
                   AI & Machine Learning Engineering student with hands-on experience in predictive modeling, computer vision, and
                   full-stack development. I've developed automobile prognostic systems using ML algorithms and Raspberry Pi
@@ -189,13 +418,19 @@ function App() {
         </section>
 
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(2)}`}
-          style={{ zIndex: activeSection === 2 ? 10 : 2 - activeSection }}
+          ref={(el) => { sectionRefs.current[2] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{ 
+            zIndex: activeSection === 2 ? 10 : 2 - activeSection,
+            ...getAnimationStyle(2)
+          }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto">
+          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-5xl font-bold mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                <Briefcase className="inline-block mr-3 mb-2" size={48} />
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+                activeSection === 2 ? 'section-title-animate' : ''
+              }`}>
+                <Briefcase className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Work Experience
               </h2>
               <div className="space-y-8">
@@ -239,43 +474,67 @@ function App() {
                       "Developed data visualization solutions and gained hands-on ML project experience"
                     ]
                   }
-                ].map((job, index) => (
+                ].map((job, index) => {
+                  const shouldAnimate = activeSection === 2;
+                  const isEven = index % 2 === 0;
+                  return (
                   <div key={index}
-                       className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1">
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-4">
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 ${
+                         shouldAnimate ? (isEven ? 'comb-slide-left' : 'comb-slide-right') : ''
+                       }`}
+                       style={{
+                         animationDelay: shouldAnimate ? `${2.0 + index * 0.2}s` : '0s'
+                       }}>
+                    <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6">
                       <div>
-                        <h3 className="text-2xl font-bold text-cyan-400 mb-1">{job.role}</h3>
+                        <h3 className="text-xl sm:text-2xl font-bold text-cyan-400 mb-1">{job.role}</h3>
                         <p className="text-gray-300 font-semibold">{job.company}</p>
                       </div>
                       <span className="text-gray-400 mt-2 md:mt-0">{job.period}</span>
                     </div>
                     <ul className="space-y-2">
                       {job.points.map((point, i) => (
-                        <li key={i} className="text-gray-300 flex items-start">
-                          <span className="text-cyan-400 mr-2">▹</span>
+                        <li key={i} className="text-lg text-gray-300 leading-relaxed flex items-start">
+                          <span className="text-cyan-400 mr-2 mt-1">▹</span>
                           <span>{point}</span>
                         </li>
                       ))}
                     </ul>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         </section>
 
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(3)}`}
-          style={{ zIndex: activeSection === 3 ? 10 : 3 - activeSection }}
+          ref={(el) => { sectionRefs.current[3] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-[1800ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section zoom-section"
+          style={{ 
+            zIndex: activeSection === 3 ? 10 : 3 - activeSection,
+            ...getAnimationStyle(3),
+            transformOrigin: 'center center'
+          }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto">
+          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-5xl font-bold mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                <Award className="inline-block mr-3 mb-2" size={48} />
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                <Award className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Featured Projects
               </h2>
               <div className="grid md:grid-cols-2 gap-8">
                 {[
+                  {
+                    title: "MedAlert: AI based medicine alert system",
+                    badge: "Healthcare AI",
+                    description: "Medicine alert system designed for patients and elderly care with multi-platform support",
+                    points: [
+                      "Built comprehensive medicine alert system with website, Android app, and AOSP-based device",
+                      "Developed multi-language support for English, Kannada, and Hindi with TTS/STT integration",
+                      "Implemented AI-powered voice alerts using Hugging Face transformers for accessibility"
+                    ]
+                  },
                   {
                     title: "Stock Market Prediction System",
                     badge: "Enigma Hackathon Winner",
@@ -303,10 +562,18 @@ function App() {
                       "Designed IoT-based predictive maintenance system with real-time monitoring dashboard",
                       "Integrated ensemble ML algorithms for vehicle diagnostics and behavior analysis"
                     ]
-                  }
-                ].map((project, index) => (
+                  },
+                  
+                ].map((project, index) => {
+                  const shouldAnimate = activeSection === 3;
+                  return (
                   <div key={index}
-                       className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-2 group">
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-2 group ${
+                         shouldAnimate ? 'pop-in' : ''
+                       }`}
+                       style={{
+                         animationDelay: shouldAnimate ? `${1.8 + index * 0.35}s` : '0s'
+                       }}>
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="text-2xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors">{project.title}</h3>
                       <ExternalLink className="text-gray-400 group-hover:text-cyan-400 transition-colors" size={20} />
@@ -324,20 +591,25 @@ function App() {
                       ))}
                     </ul>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
         </section>
 
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(4)}`}
-          style={{ zIndex: activeSection === 4 ? 10 : 4 - activeSection }}
+          ref={(el) => { sectionRefs.current[4] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{ 
+            zIndex: activeSection === 4 ? 10 : 4 - activeSection,
+            ...getAnimationStyle(4)
+          }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto">
+          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-5xl font-bold mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
-                <Code className="inline-block mr-3 mb-2" size={48} />
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+                <Code className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Technical Skills
               </h2>
               <div className="grid md:grid-cols-2 gap-8">
@@ -352,15 +624,22 @@ function App() {
                   },
                   {
                     category: "Database & Cloud Technologies",
-                    skills: ["MySQL", "MongoDB", "PostgreSQL", "AWS", "Docker", "Git"]
+                    skills: ["MySQL", "MongoDB", "PostgreSQL", "AWS", "GCP", "Docker", "Git"]
                   },
                   {
                     category: "Tools & Platforms",
                     skills: ["ChatGPT", "Claude", "VS Code", "Cursor", "Warp", "Github Copilot", "Bolt", "Raspberry Pi", "Tableau"]
                   }
-                ].map((category, index) => (
+                ].map((category, index) => {
+                  const shouldAnimate = activeSection === 4;
+                  return (
                   <div key={index}
-                       className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500">
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 ${
+                         shouldAnimate ? 'pop-in' : ''
+                       }`}
+                       style={{
+                         animationDelay: shouldAnimate ? `${index * 0.35}s` : '0s'
+                       }}>
                     <h3 className="text-xl font-bold text-cyan-400 mb-4">{category.category}</h3>
                     <div className="flex flex-wrap gap-2">
                       {category.skills.map((skill, i) => (
@@ -371,10 +650,16 @@ function App() {
                       ))}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <div className="mt-12 bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700">
+              <div className={`mt-12 bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 ${
+                activeSection === 4 ? 'pop-in' : ''
+              }`}
+              style={{
+                animationDelay: activeSection === 4 ? '0.1s' : '0s'
+              }}>
                 <div className="flex items-start">
                   <GraduationCap className="text-cyan-400 mr-4 mt-1 flex-shrink-0" size={32} />
                   <div>
@@ -391,16 +676,20 @@ function App() {
         </section>
 
         <section
-          className={`absolute inset-0 h-full w-full transition-all duration-1000 ease-in-out transform ${getAnimationClass(5)}`}
-          style={{ zIndex: activeSection === 5 ? 10 : 5 - activeSection }}
+          ref={(el) => { sectionRefs.current[5] = el as HTMLDivElement; }}
+          className="absolute inset-0 h-full w-full transition-all duration-1200 ease-out"
+          style={{ 
+            zIndex: activeSection === 5 ? 10 : 5 - activeSection,
+            ...getAnimationStyle(5)
+          }}
         >
           <div className="h-full flex items-center py-20 px-6">
             <div className="max-w-4xl mx-auto text-center w-full">
-              <h2 className="text-5xl font-bold mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 Get In Touch
               </h2>
-              <p className="text-xl text-gray-300 mb-12">
-                I'm currently looking for new opportunities and collaborations. Whether you have a question or just want to say hi,
+              <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-12">
+                I'll always be looking for new opportunities and collaborations. Whether you have a question or just want to say Hi,
                 I'll do my best to get back to you!
               </p>
               <div className="grid md:grid-cols-2 gap-6 mb-12">
