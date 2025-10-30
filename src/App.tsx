@@ -292,13 +292,13 @@ function App() {
           <div className="h-full flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent"></div>
             <div className="text-center z-10 px-6">
-              <div className={`mb-6 sm:mb-8 relative inline-block group ${hasLoaded ? 'scale-in' : ''}`}
+              <div className={`mb-6 sm:mb-8 relative inline-block group ${hasLoaded ? 'scale-in float' : ''}`}
                    style={{ animationDelay: hasLoaded ? '0.2s' : '0s' }}>
-                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition duration-300 pulsate-glow"></div>
+                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition-all duration-500 pulsate-glow"></div>
                 <img
                   src="/WhatsApp Image 2025-10-29 at 12.34.07.jpeg"
                   alt="John Anish G"
-                  className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-transform duration-500 group-hover:scale-105 ${
+                  className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 ${
                     activeSection === 0 && !hasLoaded ? 'fade-in' : ''
                   }`}
                 />
@@ -396,7 +396,7 @@ function App() {
               }`}>
                 About Me
               </h2>
-              <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 shadow-2xl hover:shadow-cyan-500/10 transition-all duration-500 ${
+              <div className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 shadow-2xl hover:shadow-cyan-500/20 hover:scale-[1.02] hover:border-cyan-500/50 transition-all duration-500 ${
                 activeSection === 1 ? 'pop-in' : ''
               }`}
               style={{
@@ -479,7 +479,7 @@ function App() {
                   const isEven = index % 2 === 0;
                   return (
                   <div key={index}
-                       className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 ${
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-[1.02] ${
                          shouldAnimate ? (isEven ? 'comb-slide-left' : 'comb-slide-right') : ''
                        }`}
                        style={{
@@ -568,15 +568,15 @@ function App() {
                   const shouldAnimate = activeSection === 3;
                   return (
                   <div key={index}
-                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-2 group ${
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/25 transform hover:-translate-y-3 hover:scale-105 group ${
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
                          animationDelay: shouldAnimate ? `${1.8 + index * 0.35}s` : '0s'
                        }}>
                     <div className="flex items-start justify-between mb-4">
-                      <h3 className="text-2xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-colors">{project.title}</h3>
-                      <ExternalLink className="text-gray-400 group-hover:text-cyan-400 transition-colors" size={20} />
+                      <h3 className="text-2xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-all duration-300">{project.title}</h3>
+                      <ExternalLink className="text-gray-400 group-hover:text-cyan-400 transition-all duration-300 group-hover:scale-125 group-hover:rotate-12" size={20} />
                     </div>
                     <span className="inline-block bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-full text-sm mb-3">
                       {project.badge}
@@ -634,7 +634,7 @@ function App() {
                   const shouldAnimate = activeSection === 4;
                   return (
                   <div key={index}
-                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 ${
+                       className={`bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/15 transition-all duration-500 hover:scale-105 ${
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
@@ -644,7 +644,8 @@ function App() {
                     <div className="flex flex-wrap gap-2">
                       {category.skills.map((skill, i) => (
                         <span key={i}
-                              className="bg-slate-700/50 px-3 py-1 rounded-lg text-sm text-gray-300 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all duration-300 cursor-default">
+                              className="bg-slate-700/50 px-3 py-1 rounded-lg text-sm text-gray-300 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all duration-300 cursor-default hover:scale-110 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/30 stagger-fade"
+                              style={{ animationDelay: shouldAnimate ? `${0.6 + i * 0.05}s` : '0s' }}>
                           {skill}
                         </span>
                       ))}
@@ -654,7 +655,7 @@ function App() {
                 })}
               </div>
 
-              <div className={`mt-12 bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 ${
+              <div className={`mt-12 bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700 hover:border-cyan-500/50 hover:shadow-xl hover:shadow-cyan-500/15 transition-all duration-500 ${
                 activeSection === 4 ? 'pop-in' : ''
               }`}
               style={{
@@ -694,23 +695,23 @@ function App() {
               </p>
               <div className="grid md:grid-cols-2 gap-6 mb-12">
                 <a href="mailto:johnanishg@gmail.com"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 flex items-center justify-center group">
-                  <Mail className="mr-3 text-cyan-400 group-hover:scale-110 transition-transform" size={24} />
-                  <span className="text-gray-300">johnanishg@gmail.com</span>
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-105 flex items-center justify-center group">
+                  <Mail className="mr-3 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" size={24} />
+                  <span className="text-gray-300 group-hover:text-cyan-300 transition-colors duration-300">johnanishg@gmail.com</span>
                 </a>
                 <a href="tel:+916363717949"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 flex items-center justify-center group">
-                  <Phone className="mr-3 text-cyan-400 group-hover:scale-110 transition-transform" size={24} />
-                  <span className="text-gray-300">+91 6363717949</span>
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-105 flex items-center justify-center group">
+                  <Phone className="mr-3 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" size={24} />
+                  <span className="text-gray-300 group-hover:text-cyan-300 transition-colors duration-300">+91 6363717949</span>
                 </a>
               </div>
               <div className="flex justify-center space-x-6">
                 <a href="https://github.com/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 hover:scale-110">
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/30 transform hover:-translate-y-2 hover:scale-125 hover:rotate-12">
                   <Github size={32} className="text-cyan-400" />
                 </a>
                 <a href="https://linkedin.com/in/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 hover:scale-110">
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/30 transform hover:-translate-y-2 hover:scale-125 hover:rotate-12">
                   <Linkedin size={32} className="text-cyan-400" />
                 </a>
               </div>
