@@ -7,6 +7,7 @@ function App() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [atEdge, setAtEdge] = useState<'top' | 'bottom' | null>(null); // Track if at edge and ready to switch
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const scrollAccumulator = useRef(0);
@@ -65,6 +66,9 @@ function App() {
             // Smooth scroll with reduced sensitivity
             const smoothDelta = e.deltaY * 0.85;
             scrollableElement.scrollTop += smoothDelta;
+            
+            // Reset edge state when scrolling within content
+            setAtEdge(null);
           }
         }
         // Reset accumulator since we're scrolling within the section
@@ -73,40 +77,37 @@ function App() {
         return;
       }
 
-      // Accumulate scroll delta only when section can't scroll
-      scrollAccumulator.current += e.deltaY;
+      // At this point, we can't scroll further in the section
+      // Check if we're already at the edge from a previous scroll
+      const isScrollingDown = e.deltaY > 0;
+      const isScrollingUp = e.deltaY < 0;
       
-      // Calculate progress with smooth easing (ease-out cubic)
-      const progress = Math.min(Math.abs(scrollAccumulator.current) / scrollThreshold, 1);
-      const easedProgress = 1 - Math.pow(1 - progress, 3); // Smooth easing
-      setScrollProgress(easedProgress);
-
-      // Check if we should transition to next/previous section
-      if (Math.abs(scrollAccumulator.current) >= scrollThreshold) {
-        // Additional check: Make sure we're actually at the edge
-        const sectionElement = sectionRefs.current[activeSection];
-        if (sectionElement) {
-          const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
-          if (scrollableElement) {
-            const isAtTop = scrollableElement.scrollTop < 10;
-            const isAtBottom = scrollableElement.scrollTop + scrollableElement.clientHeight >= scrollableElement.scrollHeight - 10;
-            
-            // Only switch if at the edge in the scroll direction
-            if ((e.deltaY > 0 && !isAtBottom) || (e.deltaY < 0 && !isAtTop)) {
-              // Reset accumulator to allow continued accumulation
-              return;
-            }
-          }
-        }
-        
-        if (e.deltaY > 0 && activeSection < sections.length - 1) {
+      // If already at edge and scrolling in same direction, switch sections
+      if ((atEdge === 'bottom' && isScrollingDown && activeSection < sections.length - 1) ||
+          (atEdge === 'top' && isScrollingUp && activeSection > 0)) {
+        // Second scroll at edge - switch section
+        if (isScrollingDown) {
           scrollToSection(activeSection + 1);
-        } else if (e.deltaY < 0 && activeSection > 0) {
+        } else {
           scrollToSection(activeSection - 1);
         }
+        setAtEdge(null);
         scrollAccumulator.current = 0;
         setScrollProgress(0);
+        return;
       }
+      
+      // First time reaching the edge - just mark it
+      if (isScrollingDown && activeSection < sections.length - 1) {
+        setAtEdge('bottom');
+      } else if (isScrollingUp && activeSection > 0) {
+        setAtEdge('top');
+      }
+
+      // Show visual feedback that we're at the edge
+      scrollAccumulator.current += e.deltaY;
+      const progress = Math.min(Math.abs(scrollAccumulator.current) / scrollThreshold, 1);
+      setScrollProgress(progress * 0.3); // Subtle visual indicator
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -154,30 +155,49 @@ function App() {
         const isAtTop = scrollTop <= 2;
         const isAtBottom = scrollTop + clientHeight >= scrollHeight - 2;
         
-        // Only allow section switching if:
-        // 1. User made a significant swipe (more than 100px)
-        // 2. AND we're at the absolute edge of the scrollable content
-        // 3. AND the user didn't actually scroll the content (or tried to scroll but hit the limit)
-        if (Math.abs(diff) > 100) {
-          // Swiped DOWN and at bottom
-          if (diff > 0 && isAtBottom && activeSection < sections.length - 1) {
+        const isSwipingDown = diff > 50;
+        const isSwipingUp = diff < -50;
+        
+        // If already at edge and swiping in same direction again, switch sections
+        if ((atEdge === 'bottom' && isSwipingDown && isAtBottom && activeSection < sections.length - 1) ||
+            (atEdge === 'top' && isSwipingUp && isAtTop && activeSection > 0)) {
+          // Second swipe at edge - switch section
+          if (isSwipingDown) {
             scrollToSection(activeSection + 1);
-            return;
-          }
-          // Swiped UP and at top
-          if (diff < 0 && isAtTop && activeSection > 0) {
+          } else {
             scrollToSection(activeSection - 1);
-            return;
           }
+          setAtEdge(null);
+          return;
+        }
+        
+        // First time reaching edge with swipe - mark it
+        if (isSwipingDown && isAtBottom && activeSection < sections.length - 1) {
+          setAtEdge('bottom');
+        } else if (isSwipingUp && isAtTop && activeSection > 0) {
+          setAtEdge('top');
+        } else if (!isAtBottom && !isAtTop) {
+          // Reset edge state if not at edge
+          setAtEdge(null);
         }
       } else {
-        // No scrollable element - allow section switching with higher threshold
-        if (Math.abs(diff) > 100) {
-          if (diff > 0 && activeSection < sections.length - 1) {
+        // No scrollable element - check for two-step pattern
+        const isSwipingDown = diff > 50;
+        const isSwipingUp = diff < -50;
+        
+        if ((atEdge === 'bottom' && isSwipingDown && activeSection < sections.length - 1) ||
+            (atEdge === 'top' && isSwipingUp && activeSection > 0)) {
+          // Second swipe - switch section
+          if (isSwipingDown) {
             scrollToSection(activeSection + 1);
-          } else if (diff < 0 && activeSection > 0) {
+          } else {
             scrollToSection(activeSection - 1);
           }
+          setAtEdge(null);
+        } else if (isSwipingDown && activeSection < sections.length - 1) {
+          setAtEdge('bottom');
+        } else if (isSwipingUp && activeSection > 0) {
+          setAtEdge('top');
         }
       }
     };
@@ -193,11 +213,12 @@ function App() {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [activeSection, isScrolling, canScrollInSection]);
+  }, [activeSection, isScrolling, atEdge, canScrollInSection]);
 
   const scrollToSection = (index: number) => {
     setIsScrolling(true);
     setActiveSection(index);
+    setAtEdge(null); // Reset edge state when changing sections
 
     // Scroll the new section to top
     setTimeout(() => {
@@ -741,7 +762,7 @@ function App() {
         ))}
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-slate-900/50 border-t border-slate-800 py-4 text-center z-40">
+      <footer className="fixed bottom-0 left-0 right-0 bg-transparent py-4 text-center z-40">
         <p className="text-gray-400 text-sm">Designed & Built by John Anish G</p>
       </footer>
     </div>
