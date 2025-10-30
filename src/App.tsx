@@ -200,7 +200,10 @@ function App() {
 
   return (
     <div ref={containerRef} className="h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
-      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 ${activeSection > 0 ? 'bg-slate-900/95 backdrop-blur-md shadow-lg' : 'bg-transparent'}`}>
+      {/* Single AIFaceVisual instance for all sections */}
+      <AIFaceVisual />
+      
+      <nav className={`fixed top-0 w-full z-50 transition-all duration-500 bg-transparent`}>
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex justify-between items-center">
             <div className="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
@@ -246,7 +249,7 @@ function App() {
                   }`}
                 />
               </div>
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 bg-clip-text text-transparent animate-gradient ${hasLoaded ? 'main-title-animate title-shimmer title-particle-burst' : ''}`}
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mt-2 mb-3 sm:mb-4 bg-clip-text text-transparent animate-gradient ${hasLoaded ? 'slide-up-fade' : ''}`}
                   style={{
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
@@ -258,8 +261,7 @@ function App() {
                     marginBottom: '1rem',
                     animationDelay: hasLoaded ? '0.5s' : '0s',
                     opacity: hasLoaded ? undefined : 1,
-                    transformStyle: 'preserve-3d',
-                    perspective: '1000px'
+                    transformStyle: 'preserve-3d'
                   }}>
                 JOHN ANISH G
               </h1>
@@ -332,8 +334,7 @@ function App() {
             ...getAnimationStyle(1)
           }}
         >
-          <div className="h-full flex items-center py-12 px-6 overflow-y-auto scrollbar-hide relative">
-            {activeSection === 1 && <AIFaceVisual />}
+          <div className="h-full flex items-center justify-center px-6 overflow-y-auto scrollbar-hide relative">
             <div className="max-w-5xl mx-auto w-full relative z-10">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
                 activeSection === 1 ? 'section-title-animate title-glow-pulse' : ''
@@ -369,7 +370,7 @@ function App() {
             ...getAnimationStyle(2)
           }}
         >
-          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full pt-28 pb-12 px-6 overflow-y-auto scrollbar-hide relative">
             <div className="max-w-6xl mx-auto">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 2 ? 'section-title-animate title-glow-pulse' : ''
@@ -460,7 +461,7 @@ function App() {
             ...getAnimationStyle(3)
           }}
         >
-          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full pt-28 pb-12 px-6 overflow-y-auto scrollbar-hide relative">
             <div className="max-w-6xl mx-auto">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 3 ? 'section-title-animate title-glow-pulse' : ''
@@ -551,7 +552,7 @@ function App() {
             ...getAnimationStyle(4)
           }}
         >
-          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full pt-28 pb-12 px-6 overflow-y-auto scrollbar-hide relative">
             <div className="max-w-6xl mx-auto">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 4 ? 'section-title-animate title-glow-pulse' : ''
@@ -631,51 +632,34 @@ function App() {
             ...getAnimationStyle(5)
           }}
         >
-          <div className="h-full flex items-center py-20 px-6">
-            <div className="max-w-4xl mx-auto text-center w-full">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
-                activeSection === 5 ? 'section-title-animate title-glow-pulse' : ''
-              }`}>
+          <div className="h-full flex items-center pt-28 pb-20 px-6 relative">
+            <div className="max-w-4xl mx-auto text-center w-full relative z-10">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
                 Get In Touch
               </h2>
-              <p className={`text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-12 ${
-                activeSection === 5 ? 'pop-in' : ''
-              }`}
-              style={{
-                animationDelay: activeSection === 5 ? '2.5s' : '0s'
-              }}>
+              <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-12">
                 I'll always be looking for new opportunities and collaborations. Whether you have a question or just want to say Hi,
                 I'll do my best to get back to you!
               </p>
-              <div className={`grid md:grid-cols-2 gap-6 mb-12 ${
-                activeSection === 5 ? 'pop-in' : ''
-              }`}
-              style={{
-                animationDelay: activeSection === 5 ? '2.8s' : '0s'
-              }}>
+              <div className="grid md:grid-cols-2 gap-6 mb-12">
                 <a href="mailto:johnanishg@gmail.com"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-105 flex items-center justify-center group">
-                  <Mail className="mr-3 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" size={24} />
-                  <span className="text-gray-300 group-hover:text-cyan-300 transition-colors duration-300">johnanishg@gmail.com</span>
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 flex items-center justify-center group">
+                  <Mail className="mr-3 text-cyan-400 group-hover:scale-110 transition-transform" size={24} />
+                  <span className="text-gray-300">johnanishg@gmail.com</span>
                 </a>
                 <a href="tel:+916363717949"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-105 flex items-center justify-center group">
-                  <Phone className="mr-3 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" size={24} />
-                  <span className="text-gray-300 group-hover:text-cyan-300 transition-colors duration-300">+91 6363717949</span>
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 flex items-center justify-center group">
+                  <Phone className="mr-3 text-cyan-400 group-hover:scale-110 transition-transform" size={24} />
+                  <span className="text-gray-300">+91 6363717949</span>
                 </a>
               </div>
-              <div className={`flex justify-center space-x-6 ${
-                activeSection === 5 ? 'pop-in' : ''
-              }`}
-              style={{
-                animationDelay: activeSection === 5 ? '3.1s' : '0s'
-              }}>
+              <div className="flex justify-center space-x-6">
                 <a href="https://github.com/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/30 transform hover:-translate-y-2 hover:scale-125 hover:rotate-12">
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 hover:scale-110">
                   <Github size={32} className="text-cyan-400" />
                 </a>
                 <a href="https://linkedin.com/in/johnanishg" target="_blank" rel="noopener noreferrer"
-                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/30 transform hover:-translate-y-2 hover:scale-125 hover:rotate-12">
+                   className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-300 hover:shadow-lg hover:shadow-cyan-500/10 transform hover:-translate-y-1 hover:scale-110">
                   <Linkedin size={32} className="text-cyan-400" />
                 </a>
               </div>
