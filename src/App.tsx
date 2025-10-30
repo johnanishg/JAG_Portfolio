@@ -10,6 +10,7 @@ function App() {
   const [atEdge, setAtEdge] = useState<'top' | 'bottom' | null>(null); // Track if at edge and ready to switch
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
+  const touchStartTime = useRef(0);
   const scrollAccumulator = useRef(0);
   const scrollThreshold = 60; // Reduced threshold for more responsive scrolling
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -124,6 +125,7 @@ function App() {
 
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY.current = e.touches[0].clientY;
+      touchStartTime.current = Date.now();
       
       // Check if touch started in a scrollable element
       const target = e.target as HTMLElement;
@@ -139,8 +141,18 @@ function App() {
       if (isScrolling) return;
 
       const touchEndY = e.changedTouches[0].clientY;
+      const touchEndTime = Date.now();
       const diff = touchStartY.current - touchEndY;
-
+      const timeDiff = touchEndTime - touchStartTime.current;
+      
+      // Calculate velocity (pixels per millisecond)
+      const velocity = Math.abs(diff) / timeDiff;
+      
+      // Increased threshold for swipe distance and require minimum velocity
+      // This makes it less likely to trigger on slow scrolling
+      const minSwipeDistance = 100; // Increased from 50 to 100
+      const minSwipeVelocity = 0.3; // Minimum velocity for a "swipe"
+      
       // Check if touch ended in a scrollable element
       const target = e.target as HTMLElement;
       const scrollableElement = target.closest('[class*="overflow-y-auto"]') as HTMLElement;
@@ -155,8 +167,9 @@ function App() {
         const isAtTop = scrollTop <= 2;
         const isAtBottom = scrollTop + clientHeight >= scrollHeight - 2;
         
-        const isSwipingDown = diff > 50;
-        const isSwipingUp = diff < -50;
+        // For scrollable content, require both distance AND velocity for a swipe
+        const isSwipingDown = diff > minSwipeDistance && velocity > minSwipeVelocity;
+        const isSwipingUp = diff < -minSwipeDistance && velocity > minSwipeVelocity;
         
         // If already at edge and swiping in same direction again, switch sections
         if ((atEdge === 'bottom' && isSwipingDown && isAtBottom && activeSection < sections.length - 1) ||
@@ -181,9 +194,9 @@ function App() {
           setAtEdge(null);
         }
       } else {
-        // No scrollable element - check for two-step pattern
-        const isSwipingDown = diff > 50;
-        const isSwipingUp = diff < -50;
+        // No scrollable element - still require reasonable distance
+        const isSwipingDown = diff > minSwipeDistance;
+        const isSwipingUp = diff < -minSwipeDistance;
         
         if ((atEdge === 'bottom' && isSwipingDown && activeSection < sections.length - 1) ||
             (atEdge === 'top' && isSwipingUp && activeSection > 0)) {
