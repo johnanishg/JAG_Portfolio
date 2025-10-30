@@ -51,11 +51,13 @@ const detectDeviceCapability = () => {
 
 const AIFaceVisual = () => {
   const [mounted, setMounted] = useState(false);
+  const [canvasError, setCanvasError] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
   const nodesRef = useRef<Node[]>([]);
   const connectionsRef = useRef<Connection[]>([]);
   const lastFrameTime = useRef<number>(0);
+  const errorCountRef = useRef<number>(0);
   
   // Detect device capability once
   const deviceCapability = useMemo(() => detectDeviceCapability(), []);
@@ -105,23 +107,50 @@ const AIFaceVisual = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    let resizeTimeout: NodeJS.Timeout;
+    
     // Set canvas size
     const updateCanvasSize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      const ctx = canvas.getContext('2d', { 
-        alpha: true,
-        desynchronized: true // Better performance
+      // Use requestAnimationFrame for smooth resize
+      requestAnimationFrame(() => {
+        const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
+        const rect = canvas.getBoundingClientRect();
+        
+        // Only update if size actually changed (avoid unnecessary work)
+        if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+          canvas.width = rect.width * dpr;
+          canvas.height = rect.height * dpr;
+          
+          const ctx = canvas.getContext('2d', { 
+            alpha: true,
+            desynchronized: true
+          });
+          if (ctx) {
+            ctx.scale(dpr, dpr);
+          }
+          
+          // Reposition nodes if they're outside new bounds
+          const nodes = nodesRef.current;
+          if (nodes.length > 0) {
+            for (let i = 0; i < nodes.length; i++) {
+              nodes[i].x = Math.min(nodes[i].x, rect.width);
+              nodes[i].y = Math.min(nodes[i].y, rect.height);
+            }
+            updateConnections();
+          }
+        }
       });
-      if (ctx) {
-        ctx.scale(dpr, dpr);
-      }
+    };
+    
+    // Debounced resize handler for mobile
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(updateCanvasSize, 100);
     };
     
     updateCanvasSize();
-    window.addEventListener('resize', updateCanvasSize);
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', updateCanvasSize);
 
     // Generate initial nodes
     const rect = canvas.getBoundingClientRect();
@@ -144,7 +173,9 @@ const AIFaceVisual = () => {
     setMounted(true);
 
     return () => {
-      window.removeEventListener('resize', updateCanvasSize);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', updateCanvasSize);
+      clearTimeout(resizeTimeout);
     };
   }, [settings.numNodes, tier]);
 
@@ -178,18 +209,64 @@ const AIFaceVisual = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d', { 
+    let ctx = canvas.getContext('2d', { 
       alpha: true,
       desynchronized: true 
     });
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
     const targetFrameTime = 1000 / settings.targetFPS;
     let connectionUpdateCounter = 0;
     const connectionUpdateInterval = tier === 'low' ? 30 : tier === 'medium' ? 20 : 15;
+    let isVisible = true;
+    let isContextLost = false;
+
+    // Get current canvas dimensions
+    const getCanvasRect = () => {
+      return canvas.getBoundingClientRect();
+    };
+
+    // Handle context loss (common on mobile)
+    const handleContextLost = (e: Event) => {
+      e.preventDefault();
+      isContextLost = true;
+      console.log('Canvas context lost');
+    };
+
+    const handleContextRestored = () => {
+      console.log('Canvas context restored');
+      isContextLost = false;
+      ctx = canvas.getContext('2d', { 
+        alpha: true,
+        desynchronized: true 
+      });
+      // Reinitialize canvas size
+      const rect = getCanvasRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
+    };
+
+    // Handle visibility changes
+    const handleVisibilityChange = () => {
+      isVisible = !document.hidden;
+    };
+
+    // Add event listeners
+    canvas.addEventListener('webglcontextlost', handleContextLost);
+    canvas.addEventListener('webglcontextrestored', handleContextRestored);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     const animate = (currentTime: number) => {
+      // Skip animation if context is lost or page is hidden
+      if (isContextLost || !isVisible || !ctx) {
+        animationFrameId.current = requestAnimationFrame(animate);
+        return;
+      }
+
       // Frame rate limiting for consistent performance
       if (currentTime - lastFrameTime.current < targetFrameTime) {
         animationFrameId.current = requestAnimationFrame(animate);
@@ -198,86 +275,128 @@ const AIFaceVisual = () => {
 
       lastFrameTime.current = currentTime;
 
-      // Update nodes
-      const nodes = nodesRef.current;
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        node.x += node.vx;
-        node.y += node.vy;
-
-        // Bounce off edges
-        if (node.x < 0 || node.x > rect.width) node.vx *= -1;
-        if (node.y < 0 || node.y > rect.height) node.vy *= -1;
-
-        // Keep within bounds
-        node.x = Math.max(0, Math.min(rect.width, node.x));
-        node.y = Math.max(0, Math.min(rect.height, node.y));
-        
-        // Simple animation for radius and opacity (only on high-end devices)
-        if (settings.enableAnimations) {
-          const time = currentTime * 0.001;
-          node.radius = node.radius + Math.sin(time + node.id) * 0.02;
-          node.opacity = 0.6 + Math.sin(time * 0.5 + node.id) * 0.15;
-        }
-      }
-
-      // Update connections periodically (not every frame)
-      connectionUpdateCounter++;
-      if (connectionUpdateCounter >= connectionUpdateInterval) {
-        updateConnections();
-        connectionUpdateCounter = 0;
-      }
-
-      // Clear canvas
-      ctx.clearRect(0, 0, rect.width, rect.height);
-
-      // Draw connections
-      const connections = connectionsRef.current;
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)';
-      ctx.lineWidth = 1;
+      // Get fresh canvas dimensions each frame (fixes mobile resize issues)
+      const rect = getCanvasRect();
       
-      for (let i = 0; i < connections.length; i++) {
-        const conn = connections[i];
-        const fromNode = nodes[conn.from];
-        const toNode = nodes[conn.to];
-        
-        ctx.beginPath();
-        ctx.globalAlpha = conn.baseOpacity;
-        ctx.moveTo(fromNode.x, fromNode.y);
-        ctx.lineTo(toNode.x, toNode.y);
-        ctx.stroke();
-      }
+      // Validate canvas context is still good
+      try {
+        // Update nodes
+        const nodes = nodesRef.current;
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          node.x += node.vx;
+          node.y += node.vy;
 
-      // Draw nodes
-      for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        ctx.beginPath();
-        ctx.fillStyle = node.color;
-        ctx.globalAlpha = node.opacity;
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Add glow effect for high-end devices
-        if (settings.enableGlow) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = node.color;
-          ctx.fill();
-          ctx.shadowBlur = 0;
+          // Bounce off edges with proper bounds
+          if (node.x < 0 || node.x > rect.width) {
+            node.vx *= -1;
+            node.x = Math.max(0, Math.min(rect.width, node.x));
+          }
+          if (node.y < 0 || node.y > rect.height) {
+            node.vy *= -1;
+            node.y = Math.max(0, Math.min(rect.height, node.y));
+          }
+          
+          // Simple animation for radius and opacity (only on high-end devices)
+          if (settings.enableAnimations) {
+            const time = currentTime * 0.001;
+            node.radius = 2.5 + Math.sin(time + node.id) * 0.5;
+            node.opacity = 0.65 + Math.sin(time * 0.5 + node.id) * 0.2;
+          }
         }
+
+        // Update connections periodically (not every frame)
+        connectionUpdateCounter++;
+        if (connectionUpdateCounter >= connectionUpdateInterval) {
+          updateConnections();
+          connectionUpdateCounter = 0;
+        }
+
+        // Clear canvas
+        ctx.clearRect(0, 0, rect.width, rect.height);
+
+        // Draw connections
+        const connections = connectionsRef.current;
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)';
+        ctx.lineWidth = 1;
+        
+        for (let i = 0; i < connections.length; i++) {
+          const conn = connections[i];
+          const fromNode = nodes[conn.from];
+          const toNode = nodes[conn.to];
+          
+          if (fromNode && toNode) {
+            ctx.beginPath();
+            ctx.globalAlpha = conn.baseOpacity;
+            ctx.moveTo(fromNode.x, fromNode.y);
+            ctx.lineTo(toNode.x, toNode.y);
+            ctx.stroke();
+          }
+        }
+
+        // Draw nodes
+        for (let i = 0; i < nodes.length; i++) {
+          const node = nodes[i];
+          ctx.beginPath();
+          ctx.fillStyle = node.color;
+          ctx.globalAlpha = node.opacity;
+          ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Add glow effect for high-end devices
+          if (settings.enableGlow) {
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = node.color;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+          }
+        }
+
+        ctx.globalAlpha = 1;
+      } catch (error) {
+        console.error('Canvas rendering error:', error);
+        errorCountRef.current++;
+        
+        // If too many errors, disable canvas and show fallback
+        if (errorCountRef.current > 10) {
+          setCanvasError(true);
+          if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current);
+          }
+          return;
+        }
+        
+        // Context might be lost, try to recover
+        isContextLost = true;
       }
 
-      ctx.globalAlpha = 1;
       animationFrameId.current = requestAnimationFrame(animate);
     };
 
-    animationFrameId.current = requestAnimationFrame(animate);
+    // Add a small delay before starting to ensure canvas is fully ready
+    const startDelay = setTimeout(() => {
+      animationFrameId.current = requestAnimationFrame(animate);
+    }, 100);
 
     return () => {
+      clearTimeout(startDelay);
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
+      canvas.removeEventListener('webglcontextlost', handleContextLost);
+      canvas.removeEventListener('webglcontextrestored', handleContextRestored);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [settings, tier]);
+
+  // Fallback: If canvas has persistent errors, just show gradient background
+  if (canvasError) {
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" />
+      </div>
+    );
+  }
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
@@ -294,7 +413,9 @@ const AIFaceVisual = () => {
           ...(hasGPU ? {
             transform: 'translate3d(0, 0, 0)',
             willChange: 'transform',
-          } : {})
+          } : {}),
+          // Ensure canvas doesn't interfere with touch events
+          touchAction: 'none',
         }}
       />
     </div>
