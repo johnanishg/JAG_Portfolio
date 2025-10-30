@@ -296,7 +296,7 @@ function App() {
                    style={{ animationDelay: hasLoaded ? '0.2s' : '0s' }}>
                 <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition-all duration-500 pulsate-glow"></div>
                 <img
-                  src="/WhatsApp Image 2025-10-29 at 12.34.07.jpeg"
+                  src="/profile.jpeg"
                   alt="John Anish G"
                   className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 ${
                     activeSection === 0 && !hasLoaded ? 'fade-in' : ''
