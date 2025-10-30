@@ -7,43 +7,32 @@ function App() {
   const [scrollProgress, setScrollProgress] = useState(0);
   const [isScrolling, setIsScrolling] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
-  const [atEdge, setAtEdge] = useState<'top' | 'bottom' | null>(null); // Track if at edge and ready to switch
+  const [atEdge, setAtEdge] = useState<'top' | 'bottom' | null>(null); // Two-step navigation for desktop wheel scrolling
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const touchStartTime = useRef(0);
   const scrollAccumulator = useRef(0);
-  const scrollThreshold = 60; // Reduced threshold for more responsive scrolling
+  const scrollThreshold = 60;
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Trigger entrance animations on initial load
   useEffect(() => {
-    // Small delay to ensure DOM is ready for animations
-    const timer = setTimeout(() => {
-      setHasLoaded(true);
-    }, 100);
+    const timer = setTimeout(() => setHasLoaded(true), 100);
     return () => clearTimeout(timer);
   }, []);
 
   const sections = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
 
-  // Helper function to check if a section can scroll
   const canScrollInSection = (sectionIndex: number, direction: 'up' | 'down'): boolean => {
     const sectionElement = sectionRefs.current[sectionIndex];
     if (!sectionElement) return false;
 
     const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') || sectionElement;
     
-    // Check if it's an HTMLElement
     if (scrollableElement instanceof HTMLElement) {
       const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
-      
-      if (direction === 'down') {
-        // Can scroll down if not at bottom
-        return scrollTop + clientHeight < scrollHeight - 1;
-      } else {
-        // Can scroll up if not at top
-        return scrollTop > 1;
-      }
+      return direction === 'down' 
+        ? scrollTop + clientHeight < scrollHeight - 1
+        : scrollTop > 1;
     }
     
     return false;
@@ -64,51 +53,37 @@ function App() {
         if (sectionElement) {
           const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') || sectionElement;
           if (scrollableElement instanceof HTMLElement) {
-            // Smooth scroll with reduced sensitivity
-            const smoothDelta = e.deltaY * 0.85;
-            scrollableElement.scrollTop += smoothDelta;
-            
-            // Reset edge state when scrolling within content
+            scrollableElement.scrollTop += e.deltaY * 0.85;
             setAtEdge(null);
           }
         }
-        // Reset accumulator since we're scrolling within the section
         scrollAccumulator.current = 0;
         setScrollProgress(0);
         return;
       }
 
-      // At this point, we can't scroll further in the section
-      // Check if we're already at the edge from a previous scroll
+      // Two-step navigation: first scroll marks edge, second scroll switches section
       const isScrollingDown = e.deltaY > 0;
       const isScrollingUp = e.deltaY < 0;
       
-      // If already at edge and scrolling in same direction, switch sections
       if ((atEdge === 'bottom' && isScrollingDown && activeSection < sections.length - 1) ||
           (atEdge === 'top' && isScrollingUp && activeSection > 0)) {
-        // Second scroll at edge - switch section
-        if (isScrollingDown) {
-          scrollToSection(activeSection + 1);
-        } else {
-          scrollToSection(activeSection - 1);
-        }
-        setAtEdge(null);
+        scrollToSection(isScrollingDown ? activeSection + 1 : activeSection - 1);
         scrollAccumulator.current = 0;
         setScrollProgress(0);
         return;
       }
       
-      // First time reaching the edge - just mark it
+      // Mark edge on first scroll
       if (isScrollingDown && activeSection < sections.length - 1) {
         setAtEdge('bottom');
       } else if (isScrollingUp && activeSection > 0) {
         setAtEdge('top');
       }
 
-      // Show visual feedback that we're at the edge
       scrollAccumulator.current += e.deltaY;
       const progress = Math.min(Math.abs(scrollAccumulator.current) / scrollThreshold, 1);
-      setScrollProgress(progress * 0.3); // Subtle visual indicator
+      setScrollProgress(progress * 0.3);
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -126,15 +101,6 @@ function App() {
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY.current = e.touches[0].clientY;
       touchStartTime.current = Date.now();
-      
-      // Check if touch started in a scrollable element
-      const target = e.target as HTMLElement;
-      const scrollableElement = target.closest('[class*="overflow-y-auto"]') as HTMLElement;
-      
-      if (scrollableElement) {
-        // Store initial scroll position to detect if user scrolled
-        (scrollableElement as any)._touchStartScroll = scrollableElement.scrollTop;
-      }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -144,58 +110,34 @@ function App() {
       const touchEndTime = Date.now();
       const diff = touchStartY.current - touchEndY;
       const timeDiff = touchEndTime - touchStartTime.current;
-      
-      // Calculate velocity (pixels per millisecond)
       const velocity = Math.abs(diff) / timeDiff;
       
-      // Increased threshold for swipe distance and require minimum velocity
-      // This makes it less likely to trigger on slow scrolling
-      const minSwipeDistance = 100; // Increased from 50 to 100
-      const minSwipeVelocity = 0.3; // Minimum velocity for a "swipe"
+      const minSwipeDistance = 100;
+      const minSwipeVelocity = 0.3;
       
-      // Check if touch ended in a scrollable element
       const target = e.target as HTMLElement;
       const scrollableElement = target.closest('[class*="overflow-y-auto"]') as HTMLElement;
       
       if (scrollableElement) {
-        // Get scroll position
-        const scrollTop = scrollableElement.scrollTop;
-        const scrollHeight = scrollableElement.scrollHeight;
-        const clientHeight = scrollableElement.clientHeight;
-        
-        // Determine if we're at absolute top or bottom
+        const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
         const isAtTop = scrollTop <= 2;
         const isAtBottom = scrollTop + clientHeight >= scrollHeight - 2;
-        
-        // For scrollable content, require both distance AND velocity for a swipe
         const isSwipingDown = diff > minSwipeDistance && velocity > minSwipeVelocity;
         const isSwipingUp = diff < -minSwipeDistance && velocity > minSwipeVelocity;
         
-        // If at edge and swiping, switch sections immediately
         if (isSwipingDown && isAtBottom && activeSection < sections.length - 1) {
           scrollToSection(activeSection + 1);
-          setAtEdge(null);
-          return;
         } else if (isSwipingUp && isAtTop && activeSection > 0) {
           scrollToSection(activeSection - 1);
-          setAtEdge(null);
-          return;
         }
-        
-        // Reset edge state if not at edge or not swiping
-        setAtEdge(null);
       } else {
-        // No scrollable element - still require reasonable distance
         const isSwipingDown = diff > minSwipeDistance;
         const isSwipingUp = diff < -minSwipeDistance;
         
-        // Switch section immediately on swipe
         if (isSwipingDown && activeSection < sections.length - 1) {
           scrollToSection(activeSection + 1);
-          setAtEdge(null);
         } else if (isSwipingUp && activeSection > 0) {
           scrollToSection(activeSection - 1);
-          setAtEdge(null);
         }
       }
     };
@@ -216,9 +158,8 @@ function App() {
   const scrollToSection = (index: number) => {
     setIsScrolling(true);
     setActiveSection(index);
-    setAtEdge(null); // Reset edge state when changing sections
+    setAtEdge(null);
 
-    // Scroll the new section to top
     setTimeout(() => {
       const sectionElement = sectionRefs.current[index];
       if (sectionElement) {
@@ -229,26 +170,17 @@ function App() {
       }
     }, 50);
 
-    // Standard timeout for all sections
-    const transitionDuration = 700;
-    setTimeout(() => {
-      setIsScrolling(false);
-    }, transitionDuration);
+    setTimeout(() => setIsScrolling(false), 700);
   };
 
   const getAnimationStyle = (index: number) => {
     const isActive = index === activeSection;
     const isPrevious = index < activeSection;
     const isNext = index > activeSection;
-
-    // Calculate transition progress based on scroll
     const progress = scrollProgress;
-    const reverseProgress = 1 - progress;
 
-    // Enhanced smooth transitions with fade and scale for all sections
     if (isActive) {
       if (isNext) {
-        // Fade out with subtle scale down
         return {
           transform: `scale(${1 - progress * 0.2}) translateZ(0)`,
           opacity: 1 - progress,
@@ -256,22 +188,17 @@ function App() {
         };
       }
       if (isPrevious) {
-        // Fade in with scale up
+        const reverseProgress = 1 - progress;
         return {
           transform: `scale(${0.8 + reverseProgress * 0.2}) translateZ(0)`,
           opacity: reverseProgress,
           filter: `blur(${(1 - reverseProgress) * 10}px)`,
         };
       }
-      return {
-        transform: 'scale(1) translateZ(0)',
-        opacity: 1,
-        filter: 'blur(0px)',
-      };
+      return { transform: 'scale(1) translateZ(0)', opacity: 1, filter: 'blur(0px)' };
     }
 
-    if (isPrevious) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
-    if (isNext) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
+    if (isPrevious || isNext) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
     return { transform: 'scale(1) translateZ(0)', opacity: 1, filter: 'blur(0px)' };
   };
 
