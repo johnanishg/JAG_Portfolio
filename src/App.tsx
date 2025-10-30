@@ -367,11 +367,11 @@ function App() {
         >
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 2 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
-                <Briefcase className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
-                Work Experience
+                <Briefcase className="flex-shrink-0" size={28} />
+                <span>Work Experience</span>
               </h2>
               <div className="space-y-8">
                 {[
@@ -458,11 +458,11 @@ function App() {
         >
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 3 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
-                <Award className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
-                Featured Projects
+                <Award className="flex-shrink-0" size={28} />
+                <span>Featured Projects</span>
               </h2>
               <div className="grid md:grid-cols-2 gap-8">
                 {[
@@ -549,11 +549,11 @@ function App() {
         >
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 4 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
-                <Code className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
-                Technical Skills
+                <Code className="flex-shrink-0" size={28} />
+                <span>Technical Skills</span>
               </h2>
               <div className="grid md:grid-cols-2 gap-8">
                 {[
