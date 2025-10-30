@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Github, Linkedin, Mail, Phone, ChevronDown, Award, Briefcase, GraduationCap, Code, ExternalLink } from 'lucide-react';
 import AIFaceVisual from './AIFaceVisual';
 
@@ -22,7 +22,7 @@ function App() {
 
   const sections = ['home', 'about', 'experience', 'projects', 'skills', 'contact'];
 
-  const canScrollInSection = (sectionIndex: number, direction: 'up' | 'down'): boolean => {
+  const canScrollInSection = useCallback((sectionIndex: number, direction: 'up' | 'down'): boolean => {
     const sectionElement = sectionRefs.current[sectionIndex];
     if (!sectionElement) return false;
 
@@ -36,7 +36,7 @@ function App() {
     }
     
     return false;
-  };
+  }, []); // Empty deps since it only uses refs
 
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -153,9 +153,9 @@ function App() {
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [activeSection, isScrolling, atEdge, canScrollInSection]);
+  }, [activeSection, isScrolling, atEdge, canScrollInSection]); // canScrollInSection is now memoized
 
-  const scrollToSection = (index: number) => {
+  const scrollToSection = useCallback((index: number) => {
     setIsScrolling(true);
     setActiveSection(index);
     setAtEdge(null);
@@ -171,9 +171,9 @@ function App() {
     }, 50);
 
     setTimeout(() => setIsScrolling(false), 700);
-  };
+  }, []); // Empty deps - uses refs and setState which are stable
 
-  const getAnimationStyle = (index: number) => {
+  const getAnimationStyle = useCallback((index: number) => {
     const isActive = index === activeSection;
     const isPrevious = index < activeSection;
     const isNext = index > activeSection;
@@ -200,7 +200,7 @@ function App() {
 
     if (isPrevious || isNext) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
     return { transform: 'scale(1) translateZ(0)', opacity: 1, filter: 'blur(0px)' };
-  };
+  }, [activeSection, scrollProgress]);
 
   return (
     <div ref={containerRef} className="h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
