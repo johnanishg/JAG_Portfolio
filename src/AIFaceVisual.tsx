@@ -29,8 +29,17 @@ const AIFaceVisual = () => {
   const animationFrameId = useRef<number | null>(null);
   const nodesRef = useRef<Node[]>([]); // Keep nodes in a ref for animation
 
-  const numNodes = 120; // Increased to fill gaps
-  const maxConnectionDistance = 300; // Increased connection distance
+  // Device and performance detection
+  const isMobile = typeof window !== 'undefined' && 
+    (window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  
+  const isLowEndDevice = typeof window !== 'undefined' && 
+    ((navigator as any).hardwareConcurrency && (navigator as any).hardwareConcurrency <= 4);
+
+  // Adaptive settings based on device
+  const numNodes = isMobile ? 40 : (isLowEndDevice ? 60 : 120);
+  const maxConnectionDistance = isMobile ? 200 : (isLowEndDevice ? 250 : 300);
+  const animationThrottle = isMobile ? 5 : (isLowEndDevice ? 4 : 3); // Skip more frames on slower devices
   const themeColors = ['#22d3ee', '#3b82f6', '#8b5cf6', '#ec4899']; // Cyan, Blue, Purple, Pink
 
   // Helper to generate random numbers
@@ -60,7 +69,7 @@ const AIFaceVisual = () => {
       calculateLines(newNodes);
     };
     generateInitialNetwork();
-  }, []); // Empty dependency array ensures this runs only once
+  }, [numNodes, maxConnectionDistance]); // Re-generate if adaptive settings change
 
   // Function to calculate lines (called less frequently)
   const calculateLines = (currentNodes: Node[]) => {
@@ -109,9 +118,9 @@ const AIFaceVisual = () => {
         return { ...node, x: newX, y: newY };
       });
 
-      // Only update state and recalculate lines every 3 frames (20 FPS instead of 60 FPS)
+      // Adaptive frame rate based on device capability
       frameCount++;
-      if (frameCount % 3 === 0) {
+      if (frameCount % animationThrottle === 0) {
         setNodes([...nodesRef.current]);
         calculateLines(nodesRef.current);
       }
@@ -129,10 +138,18 @@ const AIFaceVisual = () => {
   }, []); // Empty dependency array ensures this runs only once
 
 
+  // GPU acceleration styles (only on desktop)
+  const gpuStyles = isMobile ? {} : {
+    transform: 'translate3d(0, 0, 0)',
+    willChange: 'transform, opacity',
+    backfaceVisibility: 'hidden' as const,
+    perspective: 1000
+  };
+
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ transform: 'translateZ(0)', willChange: 'transform' }}>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={!isMobile ? { transform: 'translateZ(0)', willChange: 'transform' } : {}}>
       {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" style={{ transform: 'translateZ(0)' }} />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" style={!isMobile ? { transform: 'translateZ(0)' } : {}} />
       
       <svg
         width="100%"
@@ -140,13 +157,8 @@ const AIFaceVisual = () => {
         viewBox="0 0 1920 1080"
         className={`transform transition-all duration-2000 ${mounted ? 'opacity-100' : 'opacity-0'}`}
         preserveAspectRatio="xMidYMid slice"
-        shapeRendering="optimizeSpeed"
-        style={{ 
-          transform: 'translate3d(0, 0, 0)',
-          willChange: 'transform, opacity',
-          backfaceVisibility: 'hidden',
-          perspective: 1000
-        }}
+        shapeRendering={isMobile ? "auto" : "optimizeSpeed"}
+        style={gpuStyles}
       >
         <defs>
           {/* Filters */}
@@ -168,7 +180,7 @@ const AIFaceVisual = () => {
         </defs>
 
         {/* --- Network Lines --- */}
-        <g filter="url(#glow)" style={{ transform: 'translateZ(0)' }}>
+        <g filter={isMobile ? "none" : "url(#glow)"} style={!isMobile ? { transform: 'translateZ(0)' } : {}}>
           {lines.map(line => (
             <line
               key={line.id}
@@ -180,18 +192,20 @@ const AIFaceVisual = () => {
               strokeWidth="1"
               opacity={line.opacity}
             >
-              <animate 
-                attributeName="opacity" 
-                values={line.valuesO} 
-                dur={`${line.animDurO}s`} 
-                repeatCount="indefinite" 
-              />
+              {!isMobile && (
+                <animate 
+                  attributeName="opacity" 
+                  values={line.valuesO} 
+                  dur={`${line.animDurO}s`} 
+                  repeatCount="indefinite" 
+                />
+              )}
             </line>
           ))}
         </g>
         
         {/* --- Network Nodes --- */}
-        <g filter="url(#glow)" style={{ transform: 'translateZ(0)' }}>
+        <g filter={isMobile ? "none" : "url(#glow)"} style={!isMobile ? { transform: 'translateZ(0)' } : {}}>
           {nodes.map(node => (
             <circle
               key={node.id}
@@ -201,18 +215,22 @@ const AIFaceVisual = () => {
               fill={node.color} // Use the assigned theme color
               opacity={node.opacity}
             >
-              <animate 
-                attributeName="r" 
-                values={`${node.radius}; ${node.radius * 1.2}; ${node.radius}`} 
-                dur={`${node.animDurR}s`} 
-                repeatCount="indefinite" 
-              />
-              <animate 
-                attributeName="opacity" 
-                values={`${node.opacity}; ${node.opacity * 0.7}; ${node.opacity}`} 
-                dur={`${node.animDurO}s`} 
-                repeatCount="indefinite" 
-              />
+              {!isMobile && (
+                <>
+                  <animate 
+                    attributeName="r" 
+                    values={`${node.radius}; ${node.radius * 1.2}; ${node.radius}`} 
+                    dur={`${node.animDurR}s`} 
+                    repeatCount="indefinite" 
+                  />
+                  <animate 
+                    attributeName="opacity" 
+                    values={`${node.opacity}; ${node.opacity * 0.7}; ${node.opacity}`} 
+                    dur={`${node.animDurO}s`} 
+                    repeatCount="indefinite" 
+                  />
+                </>
+              )}
             </circle>
           ))}
         </g>
