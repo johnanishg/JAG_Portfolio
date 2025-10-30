@@ -203,7 +203,7 @@ function App() {
   }, [activeSection, scrollProgress]);
 
   return (
-    <div ref={containerRef} className="h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
+    <div ref={containerRef} className="mobile-h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white relative">
       {/* Single AIFaceVisual instance for all sections */}
       <AIFaceVisual />
       

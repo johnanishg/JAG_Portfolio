@@ -240,4 +240,3 @@ const AIFaceVisual = () => {
 };
 
 export default AIFaceVisual;
-

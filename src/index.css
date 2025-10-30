@@ -3,16 +3,32 @@
 @tailwind utilities;
 
 @layer base {
+  /* Fix for mobile viewport height - address bar issue */
+  :root {
+    --vh: 1vh;
+  }
+  
   html {
     overflow: hidden;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+    height: 100%;
+    height: -webkit-fill-available;
   }
 
   body {
     @apply antialiased;
     overflow: hidden;
     scroll-behavior: smooth;
+    height: 100%;
+    height: -webkit-fill-available;
+    position: fixed;
+    width: 100%;
+  }
+  
+  #root {
+    height: 100%;
+    height: -webkit-fill-available;
   }
   
   * {
@@ -30,6 +46,21 @@
   
   .scrollbar-hide::-webkit-scrollbar {
     display: none;  /* Safari and Chrome */
+  }
+  
+  /* Mobile viewport height fix */
+  .mobile-h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  
+  @supports (height: 100dvh) {
+    .mobile-h-screen {
+      height: 100dvh;
+      min-height: 100dvh;
+    }
   }
 }
 
