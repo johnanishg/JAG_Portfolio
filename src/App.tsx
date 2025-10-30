@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Github, Linkedin, Mail, Phone, ChevronDown, Award, Briefcase, GraduationCap, Code, ExternalLink } from 'lucide-react';
+import AIFaceVisual from './AIFaceVisual';
 
 function App() {
   const [activeSection, setActiveSection] = useState(0);
@@ -245,8 +246,8 @@ function App() {
                   }`}
                 />
               </div>
-              <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 bg-clip-text text-transparent animate-gradient ${hasLoaded ? 'slide-up-fade' : ''}`}
-                  style={{ 
+              <h1 className={`text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-3 sm:mb-4 bg-clip-text text-transparent animate-gradient ${hasLoaded ? 'main-title-animate title-shimmer title-particle-burst' : ''}`}
+                  style={{
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundImage: 'linear-gradient(90deg, rgb(34, 211, 238) 0%, rgb(59, 130, 246) 25%, rgb(34, 211, 238) 50%, rgb(59, 130, 246) 75%, rgb(34, 211, 238) 100%)',
@@ -256,7 +257,9 @@ function App() {
                     lineHeight: '1.2',
                     marginBottom: '1rem',
                     animationDelay: hasLoaded ? '0.5s' : '0s',
-                    opacity: hasLoaded ? undefined : 1
+                    opacity: hasLoaded ? undefined : 1,
+                    transformStyle: 'preserve-3d',
+                    perspective: '1000px'
                   }}>
                 JOHN ANISH G
               </h1>
@@ -329,9 +332,10 @@ function App() {
             ...getAnimationStyle(1)
           }}
         >
-          <div className="h-full flex items-center py-20 px-6 overflow-y-auto scrollbar-hide">
-            <div className="max-w-5xl mx-auto w-full">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+          <div className="h-full flex items-center py-12 px-6 overflow-y-auto scrollbar-hide relative">
+            {activeSection === 1 && <AIFaceVisual />}
+            <div className="max-w-5xl mx-auto w-full relative z-10">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
                 activeSection === 1 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 About Me
@@ -340,7 +344,7 @@ function App() {
                 activeSection === 1 ? 'pop-in' : ''
               }`}
               style={{
-                animationDelay: activeSection === 1 ? '2.5s' : '0s'
+                animationDelay: activeSection === 1 ? '0.6s' : '0s'
               }}>
                 <p className="text-lg text-gray-300 leading-relaxed mb-6">
                   AI & Machine Learning Engineering student with hands-on experience in predictive modeling, computer vision, and
@@ -365,9 +369,9 @@ function App() {
             ...getAnimationStyle(2)
           }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 2 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 <Briefcase className="flex-shrink-0" size={28} />
@@ -423,7 +427,7 @@ function App() {
                          shouldAnimate ? (isEven ? 'comb-slide-left' : 'comb-slide-right') : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${2.7 + index * 0.25}s` : '0s'
+                         animationDelay: shouldAnimate ? `${0.7 + index * 0.2}s` : '0s'
                        }}>
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6">
                       <div>
@@ -456,9 +460,9 @@ function App() {
             ...getAnimationStyle(3)
           }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 3 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 <Award className="flex-shrink-0" size={28} />
@@ -513,7 +517,7 @@ function App() {
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${2.6 + index * 0.3}s` : '0s'
+                         animationDelay: shouldAnimate ? `${0.7 + index * 0.2}s` : '0s'
                        }}>
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="text-2xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-all duration-300">{project.title}</h3>
@@ -547,9 +551,9 @@ function App() {
             ...getAnimationStyle(4)
           }}
         >
-          <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
+          <div className="h-full py-12 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent flex items-center justify-center flex-wrap gap-2 px-4 ${
                 activeSection === 4 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 <Code className="flex-shrink-0" size={28} />
@@ -581,14 +585,14 @@ function App() {
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${2.5 + index * 0.3}s` : '0s'
+                         animationDelay: shouldAnimate ? `${0.7 + index * 0.2}s` : '0s'
                        }}>
                     <h3 className="text-xl font-bold text-cyan-400 mb-4">{category.category}</h3>
                     <div className="flex flex-wrap gap-2">
                       {category.skills.map((skill, i) => (
                         <span key={i}
                               className="bg-slate-700/50 px-3 py-1 rounded-lg text-sm text-gray-300 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all duration-300 cursor-default hover:scale-110 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/30 stagger-fade"
-                              style={{ animationDelay: shouldAnimate ? `${3.2 + i * 0.05}s` : '0s' }}>
+                              style={{ animationDelay: shouldAnimate ? `${1.5 + i * 0.05}s` : '0s' }}>
                           {skill}
                         </span>
                       ))}
@@ -602,7 +606,7 @@ function App() {
                 activeSection === 4 ? 'pop-in' : ''
               }`}
               style={{
-                animationDelay: activeSection === 4 ? '3.8s' : '0s'
+                animationDelay: activeSection === 4 ? '1.8s' : '0s'
               }}>
                 <div className="flex items-start">
                   <GraduationCap className="text-cyan-400 mr-4 mt-1 flex-shrink-0" size={32} />
