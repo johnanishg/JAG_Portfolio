@@ -68,12 +68,13 @@ const AIFaceVisual = () => {
     switch (tier) {
       case 'low':
         return {
-          numNodes: 25,
-          maxConnectionDistance: 150,
-          targetFPS: 30,
+          numNodes: 20,
+          maxConnectionDistance: 120,
+          targetFPS: 24, // Lower FPS for stability on mobile
           enableAnimations: false,
           enableGlow: false,
-          lineOpacityMultiplier: 0.4,
+          lineOpacityMultiplier: 0.35,
+          useCanvas: true, // Still use canvas but simplified
         };
       case 'medium':
         return {
@@ -83,6 +84,7 @@ const AIFaceVisual = () => {
           enableAnimations: true,
           enableGlow: false,
           lineOpacityMultiplier: 0.5,
+          useCanvas: true,
         };
       case 'high':
       default:
@@ -93,6 +95,7 @@ const AIFaceVisual = () => {
           enableAnimations: true,
           enableGlow: true,
           lineOpacityMultiplier: 0.55,
+          useCanvas: true,
         };
     }
   }, [tier]);
@@ -111,71 +114,77 @@ const AIFaceVisual = () => {
     
     // Set canvas size
     const updateCanvasSize = () => {
-      // Use requestAnimationFrame for smooth resize
-      requestAnimationFrame(() => {
-        const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
-        const rect = canvas.getBoundingClientRect();
+      if (!canvas) return;
+      
+      const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
+      const rect = canvas.getBoundingClientRect();
+      
+      // Only update if size actually changed (avoid unnecessary work)
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
         
-        // Only update if size actually changed (avoid unnecessary work)
-        if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
-          canvas.width = rect.width * dpr;
-          canvas.height = rect.height * dpr;
-          
-          const ctx = canvas.getContext('2d', { 
-            alpha: true,
-            desynchronized: true
-          });
-          if (ctx) {
-            ctx.scale(dpr, dpr);
-          }
-          
-          // Reposition nodes if they're outside new bounds
-          const nodes = nodesRef.current;
-          if (nodes.length > 0) {
-            for (let i = 0; i < nodes.length; i++) {
-              nodes[i].x = Math.min(nodes[i].x, rect.width);
-              nodes[i].y = Math.min(nodes[i].y, rect.height);
-            }
-            updateConnections();
-          }
+        const ctx = canvas.getContext('2d', { 
+          alpha: true,
+          desynchronized: true,
+          willReadFrequently: false // Optimization hint
+        });
+        if (ctx) {
+          ctx.scale(dpr, dpr);
         }
-      });
+        
+        // Reposition nodes if they're outside new bounds
+        const nodes = nodesRef.current;
+        if (nodes.length > 0) {
+          for (let i = 0; i < nodes.length; i++) {
+            nodes[i].x = Math.min(nodes[i].x, rect.width);
+            nodes[i].y = Math.min(nodes[i].y, rect.height);
+          }
+          updateConnections();
+        }
+      }
     };
     
     // Debounced resize handler for mobile
     const handleResize = () => {
       clearTimeout(resizeTimeout);
-      resizeTimeout = setTimeout(updateCanvasSize, 100);
+      resizeTimeout = setTimeout(() => {
+        requestAnimationFrame(updateCanvasSize);
+      }, 150);
     };
     
-    updateCanvasSize();
+    // Initial setup with delay for Android
+    const initTimeout = setTimeout(() => {
+      updateCanvasSize();
+      
+      // Generate initial nodes
+      const rect = canvas.getBoundingClientRect();
+      const nodes: Node[] = Array.from({ length: settings.numNodes }, (_, i) => ({
+        id: i,
+        x: getRandom(0, rect.width),
+        y: getRandom(0, rect.height),
+        vx: getRandom(-0.15, 0.15),
+        vy: getRandom(-0.15, 0.15),
+        radius: getRandom(2, 3),
+        opacity: getRandom(0.6, 0.85),
+        color: themeColors[Math.floor(Math.random() * themeColors.length)],
+      }));
+      
+      nodesRef.current = nodes;
+      updateConnections();
+      
+      // Delay the fade-in to ensure canvas is ready
+      setTimeout(() => setMounted(true), 50);
+    }, 200); // Longer delay for Android
+    
     window.addEventListener('resize', handleResize);
-    window.addEventListener('orientationchange', updateCanvasSize);
-
-    // Generate initial nodes
-    const rect = canvas.getBoundingClientRect();
-    const nodes: Node[] = Array.from({ length: settings.numNodes }, (_, i) => ({
-      id: i,
-      x: getRandom(0, rect.width),
-      y: getRandom(0, rect.height),
-      vx: getRandom(-0.2, 0.2),
-      vy: getRandom(-0.2, 0.2),
-      radius: getRandom(2, 3.5),
-      opacity: getRandom(0.6, 0.9),
-      color: themeColors[Math.floor(Math.random() * themeColors.length)],
-    }));
-    
-    nodesRef.current = nodes;
-    
-    // Pre-calculate static connections (only recalculated when nodes move significantly)
-    updateConnections();
-    
-    setMounted(true);
+    window.addEventListener('orientationchange', handleResize);
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      window.removeEventListener('orientationchange', updateCanvasSize);
+      window.removeEventListener('orientationchange', handleResize);
       clearTimeout(resizeTimeout);
+      clearTimeout(initTimeout);
     };
   }, [settings.numNodes, tier]);
 
@@ -288,20 +297,20 @@ const AIFaceVisual = () => {
           node.y += node.vy;
 
           // Bounce off edges with proper bounds
-          if (node.x < 0 || node.x > rect.width) {
+          if (node.x <= 0 || node.x >= rect.width) {
             node.vx *= -1;
-            node.x = Math.max(0, Math.min(rect.width, node.x));
+            node.x = Math.max(1, Math.min(rect.width - 1, node.x));
           }
-          if (node.y < 0 || node.y > rect.height) {
+          if (node.y <= 0 || node.y >= rect.height) {
             node.vy *= -1;
-            node.y = Math.max(0, Math.min(rect.height, node.y));
+            node.y = Math.max(1, Math.min(rect.height - 1, node.y));
           }
           
           // Simple animation for radius and opacity (only on high-end devices)
           if (settings.enableAnimations) {
             const time = currentTime * 0.001;
-            node.radius = 2.5 + Math.sin(time + node.id) * 0.5;
-            node.opacity = 0.65 + Math.sin(time * 0.5 + node.id) * 0.2;
+            node.radius = 2.5 + Math.sin(time + node.id) * 0.4;
+            node.opacity = 0.65 + Math.sin(time * 0.5 + node.id) * 0.15;
           }
         }
 
@@ -312,13 +321,18 @@ const AIFaceVisual = () => {
           connectionUpdateCounter = 0;
         }
 
-        // Clear canvas
+        // Save context state
+        ctx.save();
+        
+        // Clear canvas with proper compositing
+        ctx.globalCompositeOperation = 'source-over';
         ctx.clearRect(0, 0, rect.width, rect.height);
 
         // Draw connections
         const connections = connectionsRef.current;
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)';
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.45)';
+        ctx.lineWidth = tier === 'low' ? 0.5 : 1;
+        ctx.lineCap = 'round';
         
         for (let i = 0; i < connections.length; i++) {
           const conn = connections[i];
@@ -326,8 +340,8 @@ const AIFaceVisual = () => {
           const toNode = nodes[conn.to];
           
           if (fromNode && toNode) {
-            ctx.beginPath();
             ctx.globalAlpha = conn.baseOpacity;
+            ctx.beginPath();
             ctx.moveTo(fromNode.x, fromNode.y);
             ctx.lineTo(toNode.x, toNode.y);
             ctx.stroke();
@@ -337,22 +351,23 @@ const AIFaceVisual = () => {
         // Draw nodes
         for (let i = 0; i < nodes.length; i++) {
           const node = nodes[i];
-          ctx.beginPath();
           ctx.fillStyle = node.color;
           ctx.globalAlpha = node.opacity;
+          ctx.beginPath();
           ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
           ctx.fill();
           
           // Add glow effect for high-end devices
           if (settings.enableGlow) {
-            ctx.shadowBlur = 8;
+            ctx.shadowBlur = 6;
             ctx.shadowColor = node.color;
             ctx.fill();
             ctx.shadowBlur = 0;
           }
         }
 
-        ctx.globalAlpha = 1;
+        // Restore context state
+        ctx.restore();
       } catch (error) {
         console.error('Canvas rendering error:', error);
         errorCountRef.current++;
@@ -400,22 +415,38 @@ const AIFaceVisual = () => {
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" />
+      {/* Gradient Background - Always visible and stable */}
+      <div 
+        className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]"
+        style={{
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
+          WebkitTransform: 'translateZ(0)',
+        }}
+      />
       
       {/* Canvas for network visualization */}
       <canvas
         ref={canvasRef}
-        className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${
-          mounted ? 'opacity-100' : 'opacity-0'
-        }`}
+        className="absolute inset-0 w-full h-full"
         style={{
+          opacity: mounted ? 1 : 0,
+          transition: 'opacity 800ms ease-in-out',
+          touchAction: 'none',
+          WebkitTapHighlightColor: 'transparent',
+          pointerEvents: 'none',
+          // Better compositing for Android
+          isolation: 'isolate',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden',
           ...(hasGPU ? {
             transform: 'translate3d(0, 0, 0)',
-            willChange: 'transform',
-          } : {}),
-          // Ensure canvas doesn't interfere with touch events
-          touchAction: 'none',
+            WebkitTransform: 'translate3d(0, 0, 0)',
+          } : {
+            transform: 'translateZ(0)',
+            WebkitTransform: 'translateZ(0)',
+          }),
         }}
       />
     </div>
