@@ -298,6 +298,10 @@ function App() {
                 <img
                   src="/profile.jpeg"
                   alt="John Anish G"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
                   className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 ${
                     activeSection === 0 && !hasLoaded ? 'fade-in' : ''
                   }`}
