@@ -171,46 +171,31 @@ function App() {
         const isSwipingDown = diff > minSwipeDistance && velocity > minSwipeVelocity;
         const isSwipingUp = diff < -minSwipeDistance && velocity > minSwipeVelocity;
         
-        // If already at edge and swiping in same direction again, switch sections
-        if ((atEdge === 'bottom' && isSwipingDown && isAtBottom && activeSection < sections.length - 1) ||
-            (atEdge === 'top' && isSwipingUp && isAtTop && activeSection > 0)) {
-          // Second swipe at edge - switch section
-          if (isSwipingDown) {
-            scrollToSection(activeSection + 1);
-          } else {
-            scrollToSection(activeSection - 1);
-          }
+        // If at edge and swiping, switch sections immediately
+        if (isSwipingDown && isAtBottom && activeSection < sections.length - 1) {
+          scrollToSection(activeSection + 1);
+          setAtEdge(null);
+          return;
+        } else if (isSwipingUp && isAtTop && activeSection > 0) {
+          scrollToSection(activeSection - 1);
           setAtEdge(null);
           return;
         }
         
-        // First time reaching edge with swipe - mark it
-        if (isSwipingDown && isAtBottom && activeSection < sections.length - 1) {
-          setAtEdge('bottom');
-        } else if (isSwipingUp && isAtTop && activeSection > 0) {
-          setAtEdge('top');
-        } else if (!isAtBottom && !isAtTop) {
-          // Reset edge state if not at edge
-          setAtEdge(null);
-        }
+        // Reset edge state if not at edge or not swiping
+        setAtEdge(null);
       } else {
         // No scrollable element - still require reasonable distance
         const isSwipingDown = diff > minSwipeDistance;
         const isSwipingUp = diff < -minSwipeDistance;
         
-        if ((atEdge === 'bottom' && isSwipingDown && activeSection < sections.length - 1) ||
-            (atEdge === 'top' && isSwipingUp && activeSection > 0)) {
-          // Second swipe - switch section
-          if (isSwipingDown) {
-            scrollToSection(activeSection + 1);
-          } else {
-            scrollToSection(activeSection - 1);
-          }
+        // Switch section immediately on swipe
+        if (isSwipingDown && activeSection < sections.length - 1) {
+          scrollToSection(activeSection + 1);
           setAtEdge(null);
-        } else if (isSwipingDown && activeSection < sections.length - 1) {
-          setAtEdge('bottom');
         } else if (isSwipingUp && activeSection > 0) {
-          setAtEdge('top');
+          scrollToSection(activeSection - 1);
+          setAtEdge(null);
         }
       }
     };
