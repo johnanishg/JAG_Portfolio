@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 
 interface Node {
   id: number;
@@ -9,232 +9,294 @@ interface Node {
   radius: number;
   opacity: number;
   color: string;
-  animDurR: number;
-  animDurO: number;
 }
 
-interface Line {
-  id: string;
-  from: Node;
-  to: Node;
-  opacity: number;
-  animDurO: number;
-  valuesO: string;
+interface Connection {
+  from: number;
+  to: number;
+  baseOpacity: number;
 }
+
+// Performance detection with GPU check
+const detectDeviceCapability = () => {
+  if (typeof window === 'undefined') return { tier: 'low', hasGPU: false };
+  
+  const isMobile = window.innerWidth <= 768 || 
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  const cores = (navigator as any).hardwareConcurrency || 2;
+  
+  // Check for GPU/WebGL support
+  let hasGPU = false;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    hasGPU = !!gl;
+  } catch (e) {
+    hasGPU = false;
+  }
+  
+  // Determine device tier
+  let tier: 'low' | 'medium' | 'high';
+  if (isMobile || cores <= 2 || !hasGPU) {
+    tier = 'low';
+  } else if (cores <= 4) {
+    tier = 'medium';
+  } else {
+    tier = 'high';
+  }
+  
+  return { tier, hasGPU, isMobile };
+};
 
 const AIFaceVisual = () => {
   const [mounted, setMounted] = useState(false);
-  const [nodes, setNodes] = useState<Node[]>([]);
-  const [lines, setLines] = useState<Line[]>([]);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameId = useRef<number | null>(null);
-  const nodesRef = useRef<Node[]>([]); // Keep nodes in a ref for animation
-
-  // Device and performance detection
-  const isMobile = typeof window !== 'undefined' && 
-    (window.innerWidth <= 768 || /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+  const nodesRef = useRef<Node[]>([]);
+  const connectionsRef = useRef<Connection[]>([]);
+  const lastFrameTime = useRef<number>(0);
   
-  const isLowEndDevice = typeof window !== 'undefined' && 
-    ((navigator as any).hardwareConcurrency && (navigator as any).hardwareConcurrency <= 4);
+  // Detect device capability once
+  const deviceCapability = useMemo(() => detectDeviceCapability(), []);
+  const { tier, hasGPU } = deviceCapability;
 
-  // Adaptive settings based on device
-  const numNodes = isMobile ? 40 : (isLowEndDevice ? 60 : 120);
-  const maxConnectionDistance = isMobile ? 200 : (isLowEndDevice ? 250 : 300);
-  const animationThrottle = isMobile ? 5 : (isLowEndDevice ? 4 : 3); // Skip more frames on slower devices
-  const themeColors = ['#22d3ee', '#3b82f6', '#8b5cf6', '#ec4899']; // Cyan, Blue, Purple, Pink
+  // Adaptive settings based on device tier
+  const settings = useMemo(() => {
+    switch (tier) {
+      case 'low':
+        return {
+          numNodes: 25,
+          maxConnectionDistance: 150,
+          targetFPS: 30,
+          enableAnimations: false,
+          enableGlow: false,
+          lineOpacityMultiplier: 0.4,
+        };
+      case 'medium':
+        return {
+          numNodes: 50,
+          maxConnectionDistance: 200,
+          targetFPS: 45,
+          enableAnimations: true,
+          enableGlow: false,
+          lineOpacityMultiplier: 0.5,
+        };
+      case 'high':
+      default:
+        return {
+          numNodes: 80,
+          maxConnectionDistance: 250,
+          targetFPS: 60,
+          enableAnimations: true,
+          enableGlow: true,
+          lineOpacityMultiplier: 0.55,
+        };
+    }
+  }, [tier]);
+
+  const themeColors = ['#22d3ee', '#3b82f6', '#8b5cf6', '#ec4899'];
 
   // Helper to generate random numbers
   const getRandom = (min: number, max: number): number => Math.random() * (max - min) + min;
 
-  // Effect for initial network generation (runs once)
+  // Initialize nodes and canvas
   useEffect(() => {
-    setMounted(true);
-    const generateInitialNetwork = () => {
-      const newNodes = Array.from({ length: numNodes }).map(() => ({
-        id: Math.random(),
-        x: getRandom(0, 1920), // Use full width
-        y: getRandom(0, 1080), // Use full height
-        vx: getRandom(-0.3, 0.3), // Reduced velocity for smoother animation
-        vy: getRandom(-0.3, 0.3),
-        radius: getRandom(2, 4),
-        opacity: getRandom(0.55, 0.9),
-        color: themeColors[Math.floor(Math.random() * themeColors.length)],
-        // Pre-calculate animation durations
-        animDurR: getRandom(4, 8),
-        animDurO: getRandom(3, 7),
-      }));
-      nodesRef.current = newNodes;
-      setNodes(newNodes);
-      
-      // Calculate initial lines
-      calculateLines(newNodes);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Set canvas size
+    const updateCanvasSize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, tier === 'low' ? 1 : 2);
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      const ctx = canvas.getContext('2d', { 
+        alpha: true,
+        desynchronized: true // Better performance
+      });
+      if (ctx) {
+        ctx.scale(dpr, dpr);
+      }
     };
-    generateInitialNetwork();
-  }, [numNodes, maxConnectionDistance]); // Re-generate if adaptive settings change
+    
+    updateCanvasSize();
+    window.addEventListener('resize', updateCanvasSize);
 
-  // Function to calculate lines (called less frequently)
-  const calculateLines = (currentNodes: Node[]) => {
-    const newLines: Line[] = [];
-    for (let i = 0; i < currentNodes.length; i++) {
-      for (let j = i + 1; j < currentNodes.length; j++) {
-        const dx = currentNodes[i].x - currentNodes[j].x;
-        const dy = currentNodes[i].y - currentNodes[j].y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+    // Generate initial nodes
+    const rect = canvas.getBoundingClientRect();
+    const nodes: Node[] = Array.from({ length: settings.numNodes }, (_, i) => ({
+      id: i,
+      x: getRandom(0, rect.width),
+      y: getRandom(0, rect.height),
+      vx: getRandom(-0.2, 0.2),
+      vy: getRandom(-0.2, 0.2),
+      radius: getRandom(2, 3.5),
+      opacity: getRandom(0.6, 0.9),
+      color: themeColors[Math.floor(Math.random() * themeColors.length)],
+    }));
+    
+    nodesRef.current = nodes;
+    
+    // Pre-calculate static connections (only recalculated when nodes move significantly)
+    updateConnections();
+    
+    setMounted(true);
 
-        if (distance < maxConnectionDistance) {
-          const baseOpacity = (1 - (distance / maxConnectionDistance)) * 0.55;
-          newLines.push({
-            id: `${currentNodes[i].id}-${currentNodes[j].id}`,
-            from: currentNodes[i],
-            to: currentNodes[j],
-            opacity: baseOpacity,
-            // Pre-calculate animation values
-            animDurO: getRandom(5, 15),
-            valuesO: `${baseOpacity}; ${baseOpacity * 0.7}; ${baseOpacity}`,
-          });
+    return () => {
+      window.removeEventListener('resize', updateCanvasSize);
+    };
+  }, [settings.numNodes, tier]);
+
+  // Spatial partitioning for efficient connection detection
+  const updateConnections = () => {
+    const nodes = nodesRef.current;
+    const connections: Connection[] = [];
+    const maxDist = settings.maxConnectionDistance;
+    const maxDistSq = maxDist * maxDist; // Use squared distance to avoid sqrt
+
+    // Simple O(n²) but optimized with early exit and squared distance
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x;
+        const dy = nodes[i].y - nodes[j].y;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq < maxDistSq) {
+          const dist = Math.sqrt(distSq);
+          const baseOpacity = (1 - (dist / maxDist)) * settings.lineOpacityMultiplier;
+          connections.push({ from: i, to: j, baseOpacity });
         }
       }
     }
-    setLines(newLines);
+    
+    connectionsRef.current = connections;
   };
 
-  // Effect for running the animation loop (runs once)
+  // Animation loop with adaptive FPS
   useEffect(() => {
-    let frameCount = 0;
-    
-    const animateNetwork = () => {
-      // Update nodes in ref (faster, doesn't trigger re-renders)
-      nodesRef.current = nodesRef.current.map(node => {
-        let newX = node.x + node.vx;
-        let newY = node.y + node.vy;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d', { 
+      alpha: true,
+      desynchronized: true 
+    });
+    if (!ctx) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const targetFrameTime = 1000 / settings.targetFPS;
+    let connectionUpdateCounter = 0;
+    const connectionUpdateInterval = tier === 'low' ? 30 : tier === 'medium' ? 20 : 15;
+
+    const animate = (currentTime: number) => {
+      // Frame rate limiting for consistent performance
+      if (currentTime - lastFrameTime.current < targetFrameTime) {
+        animationFrameId.current = requestAnimationFrame(animate);
+        return;
+      }
+
+      lastFrameTime.current = currentTime;
+
+      // Update nodes
+      const nodes = nodesRef.current;
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        node.x += node.vx;
+        node.y += node.vy;
 
         // Bounce off edges
-        if (newX < 0 || newX > 1920) node.vx *= -1;
-        if (newY < 0 || newY > 1080) node.vy *= -1;
+        if (node.x < 0 || node.x > rect.width) node.vx *= -1;
+        if (node.y < 0 || node.y > rect.height) node.vy *= -1;
 
         // Keep within bounds
-        newX = Math.max(0, Math.min(1920, newX));
-        newY = Math.max(0, Math.min(1080, newY));
-
-        return { ...node, x: newX, y: newY };
-      });
-
-      // Adaptive frame rate based on device capability
-      frameCount++;
-      if (frameCount % animationThrottle === 0) {
-        setNodes([...nodesRef.current]);
-        calculateLines(nodesRef.current);
+        node.x = Math.max(0, Math.min(rect.width, node.x));
+        node.y = Math.max(0, Math.min(rect.height, node.y));
+        
+        // Simple animation for radius and opacity (only on high-end devices)
+        if (settings.enableAnimations) {
+          const time = currentTime * 0.001;
+          node.radius = node.radius + Math.sin(time + node.id) * 0.02;
+          node.opacity = 0.6 + Math.sin(time * 0.5 + node.id) * 0.15;
+        }
       }
+
+      // Update connections periodically (not every frame)
+      connectionUpdateCounter++;
+      if (connectionUpdateCounter >= connectionUpdateInterval) {
+        updateConnections();
+        connectionUpdateCounter = 0;
+      }
+
+      // Clear canvas
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      // Draw connections
+      const connections = connectionsRef.current;
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.55)';
+      ctx.lineWidth = 1;
       
-      animationFrameId.current = requestAnimationFrame(animateNetwork);
+      for (let i = 0; i < connections.length; i++) {
+        const conn = connections[i];
+        const fromNode = nodes[conn.from];
+        const toNode = nodes[conn.to];
+        
+        ctx.beginPath();
+        ctx.globalAlpha = conn.baseOpacity;
+        ctx.moveTo(fromNode.x, fromNode.y);
+        ctx.lineTo(toNode.x, toNode.y);
+        ctx.stroke();
+      }
+
+      // Draw nodes
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        ctx.beginPath();
+        ctx.fillStyle = node.color;
+        ctx.globalAlpha = node.opacity;
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add glow effect for high-end devices
+        if (settings.enableGlow) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = node.color;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      ctx.globalAlpha = 1;
+      animationFrameId.current = requestAnimationFrame(animate);
     };
-    
-    animationFrameId.current = requestAnimationFrame(animateNetwork);
+
+    animationFrameId.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
     };
-  }, []); // Empty dependency array ensures this runs only once
-
-
-  // GPU acceleration styles (only on desktop)
-  const gpuStyles = isMobile ? {} : {
-    transform: 'translate3d(0, 0, 0)',
-    willChange: 'transform, opacity',
-    backfaceVisibility: 'hidden' as const,
-    perspective: 1000
-  };
+  }, [settings, tier]);
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={!isMobile ? { transform: 'translateZ(0)', willChange: 'transform' } : {}}>
+    <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {/* Gradient Background */}
-      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" style={!isMobile ? { transform: 'translateZ(0)' } : {}} />
+      <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" />
       
-      <svg
-        width="100%"
-        height="100%"
-        viewBox="0 0 1920 1080"
-        className={`transform transition-all duration-2000 ${mounted ? 'opacity-100' : 'opacity-0'}`}
-        preserveAspectRatio="xMidYMid slice"
-        shapeRendering={isMobile ? "auto" : "optimizeSpeed"}
-        style={gpuStyles}
-      >
-        <defs>
-          {/* Filters */}
-          <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-          
-          {/* Gradients */}
-          <linearGradient id="networkGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="rgba(59, 130, 246, 0.8)" />
-            <stop offset="50%" stopColor="rgba(139, 92, 246, 0.8)" />
-            <stop offset="100%" stopColor="rgba(236, 72, 153, 0.8)" />
-          </linearGradient>
-
-        </defs>
-
-        {/* --- Network Lines --- */}
-        <g filter={isMobile ? "none" : "url(#glow)"} style={!isMobile ? { transform: 'translateZ(0)' } : {}}>
-          {lines.map(line => (
-            <line
-              key={line.id}
-              x1={line.from.x}
-              y1={line.from.y}
-              x2={line.to.x}
-              y2={line.to.y}
-              stroke="rgba(59, 130, 246, 0.55)" // Thematic blue color for lines
-              strokeWidth="1"
-              opacity={line.opacity}
-            >
-              {!isMobile && (
-                <animate 
-                  attributeName="opacity" 
-                  values={line.valuesO} 
-                  dur={`${line.animDurO}s`} 
-                  repeatCount="indefinite" 
-                />
-              )}
-            </line>
-          ))}
-        </g>
-        
-        {/* --- Network Nodes --- */}
-        <g filter={isMobile ? "none" : "url(#glow)"} style={!isMobile ? { transform: 'translateZ(0)' } : {}}>
-          {nodes.map(node => (
-            <circle
-              key={node.id}
-              cx={node.x}
-              cy={node.y}
-              r={node.radius}
-              fill={node.color} // Use the assigned theme color
-              opacity={node.opacity}
-            >
-              {!isMobile && (
-                <>
-                  <animate 
-                    attributeName="r" 
-                    values={`${node.radius}; ${node.radius * 1.2}; ${node.radius}`} 
-                    dur={`${node.animDurR}s`} 
-                    repeatCount="indefinite" 
-                  />
-                  <animate 
-                    attributeName="opacity" 
-                    values={`${node.opacity}; ${node.opacity * 0.7}; ${node.opacity}`} 
-                    dur={`${node.animDurO}s`} 
-                    repeatCount="indefinite" 
-                  />
-                </>
-              )}
-            </circle>
-          ))}
-        </g>
-      </svg>
+      {/* Canvas for network visualization */}
+      <canvas
+        ref={canvasRef}
+        className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ${
+          mounted ? 'opacity-100' : 'opacity-0'
+        }`}
+        style={{
+          ...(hasGPU ? {
+            transform: 'translate3d(0, 0, 0)',
+            willChange: 'transform',
+          } : {})
+        }}
+      />
     </div>
   );
 };
