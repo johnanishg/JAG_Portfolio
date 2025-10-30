@@ -83,6 +83,22 @@ function App() {
 
       // Check if we should transition to next/previous section
       if (Math.abs(scrollAccumulator.current) >= scrollThreshold) {
+        // Additional check: Make sure we're actually at the edge
+        const sectionElement = sectionRefs.current[activeSection];
+        if (sectionElement) {
+          const scrollableElement = sectionElement.querySelector('[class*="overflow-y-auto"]') as HTMLElement;
+          if (scrollableElement) {
+            const isAtTop = scrollableElement.scrollTop < 10;
+            const isAtBottom = scrollableElement.scrollTop + scrollableElement.clientHeight >= scrollableElement.scrollHeight - 10;
+            
+            // Only switch if at the edge in the scroll direction
+            if ((e.deltaY > 0 && !isAtBottom) || (e.deltaY < 0 && !isAtTop)) {
+              // Reset accumulator to allow continued accumulation
+              return;
+            }
+          }
+        }
+        
         if (e.deltaY > 0 && activeSection < sections.length - 1) {
           scrollToSection(activeSection + 1);
         } else if (e.deltaY < 0 && activeSection > 0) {
@@ -107,6 +123,15 @@ function App() {
 
     const handleTouchStart = (e: TouchEvent) => {
       touchStartY.current = e.touches[0].clientY;
+      
+      // Check if touch started in a scrollable element
+      const target = e.target as HTMLElement;
+      const scrollableElement = target.closest('[class*="overflow-y-auto"]') as HTMLElement;
+      
+      if (scrollableElement) {
+        // Store initial scroll position to detect if user scrolled
+        (scrollableElement as any)._touchStartScroll = scrollableElement.scrollTop;
+      }
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
@@ -115,11 +140,44 @@ function App() {
       const touchEndY = e.changedTouches[0].clientY;
       const diff = touchStartY.current - touchEndY;
 
-      if (Math.abs(diff) > 50) {
-        if (diff > 0 && activeSection < sections.length - 1) {
-          scrollToSection(activeSection + 1);
-        } else if (diff < 0 && activeSection > 0) {
-          scrollToSection(activeSection - 1);
+      // Check if touch ended in a scrollable element
+      const target = e.target as HTMLElement;
+      const scrollableElement = target.closest('[class*="overflow-y-auto"]') as HTMLElement;
+      
+      if (scrollableElement) {
+        // Get scroll position
+        const scrollTop = scrollableElement.scrollTop;
+        const scrollHeight = scrollableElement.scrollHeight;
+        const clientHeight = scrollableElement.clientHeight;
+        
+        // Determine if we're at absolute top or bottom
+        const isAtTop = scrollTop <= 2;
+        const isAtBottom = scrollTop + clientHeight >= scrollHeight - 2;
+        
+        // Only allow section switching if:
+        // 1. User made a significant swipe (more than 100px)
+        // 2. AND we're at the absolute edge of the scrollable content
+        // 3. AND the user didn't actually scroll the content (or tried to scroll but hit the limit)
+        if (Math.abs(diff) > 100) {
+          // Swiped DOWN and at bottom
+          if (diff > 0 && isAtBottom && activeSection < sections.length - 1) {
+            scrollToSection(activeSection + 1);
+            return;
+          }
+          // Swiped UP and at top
+          if (diff < 0 && isAtTop && activeSection > 0) {
+            scrollToSection(activeSection - 1);
+            return;
+          }
+        }
+      } else {
+        // No scrollable element - allow section switching with higher threshold
+        if (Math.abs(diff) > 100) {
+          if (diff > 0 && activeSection < sections.length - 1) {
+            scrollToSection(activeSection + 1);
+          } else if (diff < 0 && activeSection > 0) {
+            scrollToSection(activeSection - 1);
+          }
         }
       }
     };
