@@ -292,17 +292,13 @@ function App() {
           <div className="h-full flex items-center justify-center relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-500/5 to-transparent"></div>
             <div className="text-center z-10 px-6">
-              <div className={`mb-6 sm:mb-8 relative inline-block group ${hasLoaded ? 'scale-in float' : ''}`}
+              <div className={`mb-6 sm:mb-8 relative inline-block group ${hasLoaded ? 'scale-in' : ''}`}
                    style={{ animationDelay: hasLoaded ? '0.2s' : '0s' }}>
-                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition-all duration-500 pulsate-glow"></div>
+                <div className="absolute -inset-2 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full opacity-75 group-hover:opacity-100 blur-xl transition duration-300 pulsate-glow"></div>
                 <img
-                  src="/profile.jpeg"
+                  src="/JAG.jpeg"
                   alt="John Anish G"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.style.display = 'none';
-                  }}
-                  className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-all duration-700 group-hover:scale-110 group-hover:rotate-3 ${
+                  className={`relative w-48 h-48 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full object-cover border-4 border-slate-800 shadow-2xl transform transition-transform duration-500 group-hover:scale-105 ${
                     activeSection === 0 && !hasLoaded ? 'fade-in' : ''
                   }`}
                 />
