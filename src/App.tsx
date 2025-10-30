@@ -162,97 +162,39 @@ function App() {
     const isActive = index === activeSection;
     const isPrevious = index < activeSection;
     const isNext = index > activeSection;
-    
+
     // Calculate transition progress based on scroll
     const progress = scrollProgress;
     const reverseProgress = 1 - progress;
 
-    // Special flip transition for About section (index 1)
-    if (index === 1) {
-      if (isActive) {
-        if (isNext) {
-          // Flipping out - rotating on Y-axis
-          const rotateY = progress * 180;
-          return {
-            transform: `rotateY(${rotateY}deg) translateZ(0)`,
-            opacity: 1 - progress,
-          };
-        }
-        if (isPrevious) {
-          // Flipping in from behind - rotating on Y-axis
-          const rotateY = reverseProgress * 180;
-          return {
-            transform: `rotateY(${rotateY - 180}deg) translateZ(0)`,
-            opacity: reverseProgress,
-          };
-        }
-        return {
-          transform: 'rotateY(0deg) translateZ(0)',
-          opacity: 1,
-        };
-      }
-      
-      if (isPrevious) return { transform: 'rotateY(-180deg) translateZ(0)', opacity: 0 };
-      if (isNext) return { transform: 'rotateY(180deg) translateZ(0)', opacity: 0 };
-      return { transform: 'rotateY(0deg) translateZ(0)', opacity: 1 };
-    }
-
-
-    // Special zoom transition for Projects section (index 3)
-    if (index === 3) {
-      if (isActive) {
-        if (isNext) {
-          // Zooming out while fading
-          const scale = 1 - progress * 0.5;
-          return {
-            transform: `scale(${scale}) translateZ(0)`,
-            opacity: 1 - progress,
-          };
-        }
-        if (isPrevious) {
-          // Zooming in from small scale
-          const scale = 0.3 + reverseProgress * 0.7;
-          return {
-            transform: `scale(${scale}) translateZ(0)`,
-            opacity: reverseProgress * 0.3 + 0.7,
-          };
-        }
-        return {
-          transform: 'scale(1) translateZ(0)',
-          opacity: 1,
-        };
-      }
-      
-      if (isPrevious) return { transform: 'scale(0.3) translateZ(0)', opacity: 0 };
-      if (isNext) return { transform: 'scale(0.5) translateZ(0)', opacity: 0 };
-      return { transform: 'scale(1) translateZ(0)', opacity: 1 };
-    }
-
-    // OnePlus-style smooth vertical transitions with subtle scale for other sections
+    // Enhanced smooth transitions with fade and scale for all sections
     if (isActive) {
       if (isNext) {
-        // Moving out downward with subtle scale
+        // Fade out with subtle scale down
         return {
-          transform: `translateY(${progress * 100}%) scale(${1 - progress * 0.15})`,
-          opacity: 1 - progress * 0.8,
+          transform: `scale(${1 - progress * 0.2}) translateZ(0)`,
+          opacity: 1 - progress,
+          filter: `blur(${progress * 10}px)`,
         };
       }
       if (isPrevious) {
-        // Moving in from above
+        // Fade in with scale up
         return {
-          transform: `translateY(${reverseProgress * -100}%) scale(${0.85 + reverseProgress * 0.15})`,
-          opacity: reverseProgress * 0.2 + 0.8,
+          transform: `scale(${0.8 + reverseProgress * 0.2}) translateZ(0)`,
+          opacity: reverseProgress,
+          filter: `blur(${(1 - reverseProgress) * 10}px)`,
         };
       }
       return {
-        transform: 'translateY(0%) scale(1)',
+        transform: 'scale(1) translateZ(0)',
         opacity: 1,
+        filter: 'blur(0px)',
       };
     }
-    
-    if (isPrevious) return { transform: 'translateY(-100%) scale(0.85)', opacity: 0 };
-    if (isNext) return { transform: 'translateY(100%) scale(0.85)', opacity: 0 };
-    return { transform: 'translateY(0%) scale(1)', opacity: 1 };
+
+    if (isPrevious) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
+    if (isNext) return { transform: 'scale(0.8) translateZ(0)', opacity: 0, filter: 'blur(10px)' };
+    return { transform: 'scale(1) translateZ(0)', opacity: 1, filter: 'blur(0px)' };
   };
 
   return (
@@ -381,18 +323,16 @@ function App() {
 
         <section
           ref={(el) => { sectionRefs.current[1] = el as HTMLDivElement; }}
-          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section flip-section"
-          style={{ 
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{
             zIndex: activeSection === 1 ? 10 : 1 - activeSection,
-            ...getAnimationStyle(1),
-            transformStyle: 'preserve-3d',
-            backfaceVisibility: 'hidden'
+            ...getAnimationStyle(1)
           }}
         >
           <div className="h-full flex items-center py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-5xl mx-auto w-full">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
-                activeSection === 1 ? 'section-title-animate' : ''
+                activeSection === 1 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 About Me
               </h2>
@@ -400,7 +340,7 @@ function App() {
                 activeSection === 1 ? 'pop-in' : ''
               }`}
               style={{
-                animationDelay: activeSection === 1 ? '2.0s' : '0s'
+                animationDelay: activeSection === 1 ? '2.5s' : '0s'
               }}>
                 <p className="text-lg text-gray-300 leading-relaxed mb-6">
                   AI & Machine Learning Engineering student with hands-on experience in predictive modeling, computer vision, and
@@ -428,7 +368,7 @@ function App() {
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
               <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
-                activeSection === 2 ? 'section-title-animate' : ''
+                activeSection === 2 ? 'section-title-animate title-glow-pulse' : ''
               }`}>
                 <Briefcase className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Work Experience
@@ -483,7 +423,7 @@ function App() {
                          shouldAnimate ? (isEven ? 'comb-slide-left' : 'comb-slide-right') : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${2.0 + index * 0.2}s` : '0s'
+                         animationDelay: shouldAnimate ? `${2.7 + index * 0.25}s` : '0s'
                        }}>
                     <div className="flex flex-col md:flex-row md:justify-between md:items-start mb-6">
                       <div>
@@ -510,16 +450,17 @@ function App() {
 
         <section
           ref={(el) => { sectionRefs.current[3] = el as HTMLDivElement; }}
-          className="absolute inset-0 h-full w-full transition-all duration-[1800ms] ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section zoom-section"
-          style={{ 
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{
             zIndex: activeSection === 3 ? 10 : 3 - activeSection,
-            ...getAnimationStyle(3),
-            transformOrigin: 'center center'
+            ...getAnimationStyle(3)
           }}
         >
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+                activeSection === 3 ? 'section-title-animate title-glow-pulse' : ''
+              }`}>
                 <Award className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Featured Projects
               </h2>
@@ -572,7 +513,7 @@ function App() {
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${1.8 + index * 0.35}s` : '0s'
+                         animationDelay: shouldAnimate ? `${2.6 + index * 0.3}s` : '0s'
                        }}>
                     <div className="flex items-start justify-between mb-4">
                       <h3 className="text-2xl font-bold text-cyan-400 group-hover:text-cyan-300 transition-all duration-300">{project.title}</h3>
@@ -608,7 +549,9 @@ function App() {
         >
           <div className="h-full py-20 px-6 overflow-y-auto scrollbar-hide">
             <div className="max-w-6xl mx-auto">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-8 sm:mb-12 md:mb-16 text-center bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+                activeSection === 4 ? 'section-title-animate title-glow-pulse' : ''
+              }`}>
                 <Code className="inline-block mr-2 sm:mr-3 mb-1 sm:mb-2" size={32} />
                 Technical Skills
               </h2>
@@ -638,14 +581,14 @@ function App() {
                          shouldAnimate ? 'pop-in' : ''
                        }`}
                        style={{
-                         animationDelay: shouldAnimate ? `${index * 0.35}s` : '0s'
+                         animationDelay: shouldAnimate ? `${2.5 + index * 0.3}s` : '0s'
                        }}>
                     <h3 className="text-xl font-bold text-cyan-400 mb-4">{category.category}</h3>
                     <div className="flex flex-wrap gap-2">
                       {category.skills.map((skill, i) => (
                         <span key={i}
                               className="bg-slate-700/50 px-3 py-1 rounded-lg text-sm text-gray-300 hover:bg-cyan-500/20 hover:text-cyan-400 transition-all duration-300 cursor-default hover:scale-110 hover:-translate-y-1 hover:shadow-lg hover:shadow-cyan-500/30 stagger-fade"
-                              style={{ animationDelay: shouldAnimate ? `${0.6 + i * 0.05}s` : '0s' }}>
+                              style={{ animationDelay: shouldAnimate ? `${3.2 + i * 0.05}s` : '0s' }}>
                           {skill}
                         </span>
                       ))}
@@ -659,7 +602,7 @@ function App() {
                 activeSection === 4 ? 'pop-in' : ''
               }`}
               style={{
-                animationDelay: activeSection === 4 ? '0.1s' : '0s'
+                animationDelay: activeSection === 4 ? '3.8s' : '0s'
               }}>
                 <div className="flex items-start">
                   <GraduationCap className="text-cyan-400 mr-4 mt-1 flex-shrink-0" size={32} />
@@ -678,22 +621,34 @@ function App() {
 
         <section
           ref={(el) => { sectionRefs.current[5] = el as HTMLDivElement; }}
-          className="absolute inset-0 h-full w-full transition-all duration-1200 ease-out"
-          style={{ 
+          className="absolute inset-0 h-full w-full transition-all duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1)] smooth-section"
+          style={{
             zIndex: activeSection === 5 ? 10 : 5 - activeSection,
             ...getAnimationStyle(5)
           }}
         >
           <div className="h-full flex items-center py-20 px-6">
             <div className="max-w-4xl mx-auto text-center w-full">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">
+              <h2 className={`text-3xl sm:text-4xl md:text-5xl font-bold mb-6 sm:mb-8 bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent ${
+                activeSection === 5 ? 'section-title-animate title-glow-pulse' : ''
+              }`}>
                 Get In Touch
               </h2>
-              <p className="text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-12">
+              <p className={`text-base sm:text-lg md:text-xl text-gray-300 mb-8 sm:mb-12 ${
+                activeSection === 5 ? 'pop-in' : ''
+              }`}
+              style={{
+                animationDelay: activeSection === 5 ? '2.5s' : '0s'
+              }}>
                 I'll always be looking for new opportunities and collaborations. Whether you have a question or just want to say Hi,
                 I'll do my best to get back to you!
               </p>
-              <div className="grid md:grid-cols-2 gap-6 mb-12">
+              <div className={`grid md:grid-cols-2 gap-6 mb-12 ${
+                activeSection === 5 ? 'pop-in' : ''
+              }`}
+              style={{
+                animationDelay: activeSection === 5 ? '2.8s' : '0s'
+              }}>
                 <a href="mailto:johnanishg@gmail.com"
                    className="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/20 transform hover:-translate-y-2 hover:scale-105 flex items-center justify-center group">
                   <Mail className="mr-3 text-cyan-400 group-hover:scale-125 group-hover:rotate-12 transition-all duration-300" size={24} />
@@ -705,7 +660,12 @@ function App() {
                   <span className="text-gray-300 group-hover:text-cyan-300 transition-colors duration-300">+91 6363717949</span>
                 </a>
               </div>
-              <div className="flex justify-center space-x-6">
+              <div className={`flex justify-center space-x-6 ${
+                activeSection === 5 ? 'pop-in' : ''
+              }`}
+              style={{
+                animationDelay: activeSection === 5 ? '3.1s' : '0s'
+              }}>
                 <a href="https://github.com/johnanishg" target="_blank" rel="noopener noreferrer"
                    className="bg-slate-800/50 backdrop-blur-sm rounded-full p-4 border border-slate-700 hover:border-cyan-500/50 transition-all duration-500 hover:shadow-xl hover:shadow-cyan-500/30 transform hover:-translate-y-2 hover:scale-125 hover:rotate-12">
                   <Github size={32} className="text-cyan-400" />
