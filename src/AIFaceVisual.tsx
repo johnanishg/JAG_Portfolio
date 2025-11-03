@@ -323,9 +323,10 @@ const AIFaceVisual = () => {
 
         // Save context state
         ctx.save();
-        
+
         // Clear canvas with proper compositing
         ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
         ctx.clearRect(0, 0, rect.width, rect.height);
 
         // Draw connections
@@ -407,25 +408,12 @@ const AIFaceVisual = () => {
   // Fallback: If canvas has persistent errors, just show gradient background
   if (canvasError) {
     return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]" />
-      </div>
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ background: 'linear-gradient(to right, rgb(10, 22, 40), rgb(26, 26, 62), rgb(45, 27, 61))' }} />
     );
   }
 
   return (
-    <div className="absolute inset-0 pointer-events-none overflow-hidden">
-      {/* Gradient Background - Always visible and stable */}
-      <div 
-        className="absolute inset-0 bg-gradient-to-r from-[#0a1628] via-[#1a1a3e] to-[#2d1b3d]"
-        style={{
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden',
-          transform: 'translateZ(0)',
-          WebkitTransform: 'translateZ(0)',
-        }}
-      />
-      
+    <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ background: 'linear-gradient(to right, rgb(10, 22, 40), rgb(26, 26, 62), rgb(45, 27, 61))' }}>
       {/* Canvas for network visualization */}
       <canvas
         ref={canvasRef}
@@ -436,10 +424,10 @@ const AIFaceVisual = () => {
           touchAction: 'none',
           WebkitTapHighlightColor: 'transparent',
           pointerEvents: 'none',
-          // Better compositing for Android
           isolation: 'isolate',
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden',
+          display: 'block',
           ...(hasGPU ? {
             transform: 'translate3d(0, 0, 0)',
             WebkitTransform: 'translate3d(0, 0, 0)',
