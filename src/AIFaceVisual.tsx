@@ -424,17 +424,10 @@ const AIFaceVisual = () => {
           touchAction: 'none',
           WebkitTapHighlightColor: 'transparent',
           pointerEvents: 'none',
-          isolation: 'isolate',
+          isolation: 'auto',
           backfaceVisibility: 'hidden',
           WebkitBackfaceVisibility: 'hidden',
           display: 'block',
-          ...(hasGPU ? {
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
-          } : {
-            transform: 'translateZ(0)',
-            WebkitTransform: 'translateZ(0)',
-          }),
         }}
       />
     </div>
